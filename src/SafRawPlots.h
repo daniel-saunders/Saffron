@@ -26,6 +26,7 @@ private:
 	std::vector<TH1F*> * h_signals;
 	std::vector<TH1F*> * h_signalsDiff;
 	std::vector<TH1F*> * h_signalsDoubleDiff;
+	std::vector<TH1F*> * h_signalsTripleDiff;
 	TH2F * h_allSignals;
 	TH1F * h_allSignalsProj;
 	TH1F * h_signalMeans;

@@ -34,7 +34,7 @@ SafRunner::SafRunner() :
 	m_geometry = new SafGeometry();
 
 	// Options.
-	m_nEvents = 4400;
+	m_nEvents = 1500;
 	m_runMode = 1; // 0 for MC, 1 for real data.
 
 	// Save file.

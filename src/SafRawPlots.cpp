@@ -47,13 +47,16 @@ void SafRawPlots::initialize()
 
 	std::string name = "Signal";
 	if (m_filtered) name += "-Filtered";
-	h_signals = initPerChannelPlots(name.c_str(), name.c_str(), 4500, 7000, 16000);
+	h_signals = initPerChannelPlots(name.c_str(), name.c_str(), 6000, 7000, 16000);
 	name = "SignalDifferential";
 	if (m_filtered) name += "-Filtered";
-	h_signalsDiff = initPerChannelPlots(name.c_str(), name.c_str(), 4500, 7000, 16000);
+	h_signalsDiff = initPerChannelPlots(name.c_str(), name.c_str(), 6000, 7000, 16000);
 	name = "SignalDoubleDifferential";
 	if (m_filtered) name += "-Filtered";
-	h_signalsDoubleDiff = initPerChannelPlots(name.c_str(), name.c_str(), 4500, 7000, 16000);
+	h_signalsDoubleDiff = initPerChannelPlots(name.c_str(), name.c_str(), 6000, 7000, 16000);
+	name = "SignalTripleDifferential";
+	if (m_filtered) name += "-Filtered";
+	h_signalsTripleDiff = initPerChannelPlots(name.c_str(), name.c_str(), 6000, 7000, 16000);
 
 
 	int nChannels = nC*nG;
@@ -87,6 +90,12 @@ void SafRawPlots::initialize()
 	for (unsigned int i=0; i<nG; i++) {
 		std::stringstream ssGlib; ssGlib<<i;
 		instance_direc->mkdir(("SignalsDoubleDifferentiated/Glib" + ssGlib.str()).c_str());
+	}
+
+	instance_direc->mkdir("SignalsTripleDifferentiated");
+	for (unsigned int i=0; i<nG; i++) {
+		std::stringstream ssGlib; ssGlib<<i;
+		instance_direc->mkdir(("SignalsTripleDifferentiated/Glib" + ssGlib.str()).c_str());
 	}
 
 
@@ -136,7 +145,7 @@ void SafRawPlots::finalize()
 			i != threads.end(); i++)
 			(*i).join();
 	}
-	else if (m_calculateGains) calculateGains(0, h_signals->size());
+	else if (m_calculateGains) calculateGains(0, 5);
 
 
 	std::string direcName = name();
@@ -171,6 +180,9 @@ void SafRawPlots::finalize()
 
 		runner()->saveFile()->cd((direcName + "/SignalsDoubleDifferentiated/Glib" + ssGlib.str()).c_str());
 		h_signalsDoubleDiff->at(i)->Write();
+
+		runner()->saveFile()->cd((direcName + "/SignalsTripleDifferentiated/Glib" + ssGlib.str()).c_str());
+		h_signalsTripleDiff->at(i)->Write();
 	}
 
 	for (int i=0; i<h_avSignalPerEventPerChannel->GetNbinsX(); i++) {
@@ -266,14 +278,37 @@ void SafRawPlots::calculateGains(unsigned int iLow, unsigned int iUp) {
 
 	iPlot = iLow;
 	for (ih = (h_signalsDoubleDiff->begin()+iLow); ih!=(h_signalsDoubleDiff->begin()+iUp); ih++) {
+		int istart = h_signals->at(iPlot)->GetMaximumBin();
+	  int iend = istart + 200;
+		for (int i=istart; i<iend; i++) {
+			double rangeLow = (*ih)->GetBinCenter(i);
+			double rangeHigh = (*ih)->GetBinCenter(i+m_diffBinRange);
+			std::stringstream ss;
+			ss<<i;
+			std::string name = "SignalDiff" + ss.str();
+			m_mtx.lock();
+			TF1 * fit = new TF1(name.c_str(), "pol2", rangeLow, rangeHigh);
+			int fitStatus = (*ih)->Fit(name.c_str(), "RQ");
+			m_mtx.unlock();
+			double x = (*ih)->GetBinCenter(i+m_diffBinRange/2);
+			if (fitStatus == 0) {
+				h_signalsTripleDiff->at(iPlot)->SetBinContent(i+m_diffBinRange/2, fit->Derivative(x));
+			}
+			delete fit;
+		}
+		iPlot++;
+	}
+
+	iPlot = iLow;
+	for (ih = (h_signalsTripleDiff->begin()+iLow); ih!=(h_signalsTripleDiff->begin()+iUp); ih++) {
 		std::vector<double> roots;
 		int istart = h_signals->at(iPlot)->GetMaximumBin();
 	  int iend = istart + 500;
 		for (int i=istart; i<iend; i++) {
-			if ((*ih)->GetBinContent(i) > 0 &&
-					(*ih)->GetBinContent(i+1) > 0 &&
-					(*ih)->GetBinContent(i+2) < 0 &&
-					(*ih)->GetBinContent(i+3) < 0) {
+			if ((*ih)->GetBinContent(i) < 0 &&
+					(*ih)->GetBinContent(i+1) < 0 &&
+					(*ih)->GetBinContent(i+2) > 0 &&
+					(*ih)->GetBinContent(i+3) > 0) {
 				std::stringstream ss;
 				ss<<i;
 				std::string name = "Fit" + ss.str();
@@ -282,9 +317,8 @@ void SafRawPlots::calculateGains(unsigned int iLow, unsigned int iUp) {
 				int fitStatus = (*ih)->Fit(name.c_str(), "RQ");
 				m_mtx.unlock();
 				double root;
-				//if (fitStatus == 0) root = -fit->GetParameter(0)/fit->GetParameter(1);
-				//else
-				root = (*ih)->GetBinLowEdge(i+2);
+				if (fitStatus == 0) root = -fit->GetParameter(0)/fit->GetParameter(1);
+				else root = (*ih)->GetBinLowEdge(i+2);
 				roots.push_back(root);
 				delete fit;
 				if (roots.size() >= m_nSeekedRoots || (i-istart > 300))  {
