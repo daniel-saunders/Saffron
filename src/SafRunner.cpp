@@ -20,9 +20,10 @@ SafRunner::SafRunner() :
   m_printRate(50),
   m_triggerSkip(0)
 {
+	m_fileName = "/storage/SOLID/SM1_14Jan2015_2220_run0_scoperun_2.0V_500000event.root";
 	// Default algorithm list.
 	m_algorithms.push_back(new SafEventBuilder(this));
-	//m_algorithms.push_back(new SafRawPlots(this, false));
+	m_algorithms.push_back(new SafRawPlots(this, false));
   m_algorithms.push_back(new SafFilter(this));
   m_algorithms.push_back(new SafRawPlots(this, true));
 //	m_algorithms.push_back(new SafTrigger(this));
@@ -34,11 +35,11 @@ SafRunner::SafRunner() :
 	m_geometry = new SafGeometry();
 
 	// Options.
-	m_nEvents = 1500;
+	m_nEvents = 100;
 	m_runMode = 1; // 0 for MC, 1 for real data.
 
 	// Save file.
-	m_saveFile = new TFile("Saffron-histos-SM1_14Jan2015_2220_run0_scoperun_2.0V_500000event.root", "RECREATE");
+	m_saveFile = new TFile("Saffron-histos.root", "RECREATE");
 }
 
 

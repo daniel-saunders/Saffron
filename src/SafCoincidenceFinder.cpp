@@ -11,7 +11,8 @@
 //_____________________________________________________________________________
 
 SafCoincidenceFinder::SafCoincidenceFinder(SafRunner * runner) :
-  SafAlgorithm(runner, "SafCoincidenceFinder")
+  SafAlgorithm(runner, "SafCoincidenceFinder"),
+  m_timeWindow(10)
 {
 }
 
@@ -27,6 +28,13 @@ SafCoincidenceFinder::~SafCoincidenceFinder()
 
 void SafCoincidenceFinder::initialize()
 {
+	h_size = new TH1F("size", "size", 40, -0.5, 39.5);
+	h_duration = new TH1F("duration", "duration", m_timeWindow,+4 -0.5, m_timeWindow+3.5);
+	h_sizeVsDuration = new TH2F("sizeVsDuration", "sizeVsDuration", 40, -0.5, 39.5,
+			m_timeWindow+4, -0.5, m_timeWindow+3.5);
+	h_channelRate = new TH1F("channelRate", "channelRate", runner()->nCnG(), 0, runner()->nCnG());
+	TDirectory * instance_direc = runner()->saveFile()->mkdir(name().c_str());
+
 }
 
 
@@ -35,9 +43,37 @@ void SafCoincidenceFinder::initialize()
 void SafCoincidenceFinder::threadExecute(unsigned int iGlib, unsigned int iChannelLow,
 	unsigned int iChannelUp)
 {
-	for (unsigned int i=iChannelLow; i<std::min(iChannelUp,
-		runner()->geometry()->nChannels()); i++) {
+	std::vector<int> * triggerTimes = runner()->triggerData()->times();
+	std::vector<SafRawDataChannel*> * channels = runner()->triggerData()->channels();
+	std::vector<SafRawDataChannel*> coinChannels;
 
+	for (unsigned int iTime = 0; iTime < triggerTimes->size()-1; iTime++) {
+		unsigned int size = 1;
+		int duration = 0;
+
+		coinChannels.push_back(channels->at(iTime));
+		for (unsigned int jTime = iTime + 1; jTime < triggerTimes->size(); jTime++) {
+			duration = triggerTimes->at(jTime) - triggerTimes->at(iTime);
+			if (channels->at(iTime) == channels->at(jTime)) continue;
+			if (duration < m_timeWindow)	{
+				size++;
+				coinChannels.push_back(channels->at(jTime));
+			}
+			else break;
+		}
+
+		if (size > 1) {
+			h_size->Fill(size);
+			h_duration->Fill(duration);
+			h_sizeVsDuration->Fill(size, duration);
+
+			for (unsigned int i=0; i<size; i++) {
+				int ichan = coinChannels[i]->channelID() +
+					runner()->geometry()->nChannels() * coinChannels[i]->glibID();
+				h_channelRate->Fill(ichan);
+			}
+		}
+		coinChannels.clear();
 	}
 }
 
@@ -58,6 +94,11 @@ void SafCoincidenceFinder::execute()
 
 void SafCoincidenceFinder::finalize()
 {
+	runner()->saveFile()->cd(name().c_str());
+	h_size->Write();
+	h_sizeVsDuration->Write();
+	h_duration->Write();
+	h_channelRate->Write();
 }
 
 

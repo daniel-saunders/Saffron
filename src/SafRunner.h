@@ -53,6 +53,7 @@ private:
 	unsigned int m_printRate;
 	unsigned int m_threadsPerGlib;
 	unsigned int m_triggerSkip;
+	std::string m_fileName;
 
 
 public:
@@ -65,6 +66,8 @@ public:
 
 
 	// Setters and getters ______________________________________________________
+	void setFileName(std::string s) {m_fileName = s;}
+	std::string fileName() {return m_fileName;}
 	unsigned int printThreshold() {return m_printThreshold;}
 	void setPrintThreshold(unsigned int printThreshold) {
 		m_printThreshold = printThreshold;}

@@ -24,6 +24,7 @@ class SafRawDataChannel;
 class SafTriggerDataSet : SafDataSet
 {
 private:
+	// NOT SORTED CORRECTLY.
 	std::vector<int> m_times;
 	std::vector<SafRawDataChannel*> m_channels;
 	std::vector<double> m_values;

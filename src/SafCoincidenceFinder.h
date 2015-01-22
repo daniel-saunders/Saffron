@@ -19,7 +19,11 @@ class SafCoincidenceFinder: public SafAlgorithm
 {
 private:
 	// Members __________________________________________________________________
-
+	TH1F * h_size;
+	TH1F * h_duration;
+	int m_timeWindow;
+	TH2F * h_sizeVsDuration;
+	TH1F * h_channelRate;
 
 public:
   // Methods __________________________________________________________________

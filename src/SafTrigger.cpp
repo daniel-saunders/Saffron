@@ -7,6 +7,32 @@
 
 #include "SafTrigger.h"
 
+struct Local {
+    Local(std::vector<int> * vec) {this->vec = vec;}
+    bool operator () (int i, int j) {return (vec->at(i) < vec->at(j));}
+    std::vector<int> * vec;
+};
+
+template <typename T>
+std::vector<int> sort_permutation(std::vector<T> & vec)
+{
+    std::vector<int> p(vec.size());
+    for (unsigned int i=0; i<vec.size(); i++) p[i] = i;
+    std::sort(p.begin(), p.end(), Local(&vec));
+    return p;
+}
+
+template <typename T>
+std::vector<T> apply_permutation(
+    std::vector<T> const& vec,
+    std::vector<int> const& p)
+{
+    std::vector<T> sorted_vec(p.size());
+    for (unsigned int i=0; i<p.size(); i++) {
+    	sorted_vec[i] = vec[p[i]];
+    }
+    return sorted_vec;
+}
 
 //_____________________________________________________________________________
 
@@ -15,7 +41,7 @@ SafTrigger::SafTrigger(SafRunner * runner) :
   m_triggerWindowSizeA(16),
   m_triggerWindowSizeB(8),
   m_triggerWindowSizeC(8),
-  m_triggerValueCut(60),
+  m_triggerValueCut(90),
   m_nTriggers(0),
   m_caching(true)
 {
@@ -77,8 +103,21 @@ void SafTrigger::execute()
 
 void SafTrigger::postExecute()
 {
-	// Sorting.
+	std::vector<int> * triggerTimes = runner()->triggerData()->times();
+	std::vector<SafRawDataChannel*> * channels = runner()->triggerData()->channels();
+	std::vector<double> * values = runner()->triggerData()->values();
+	std::vector<double> * dipValues = runner()->triggerData()->dipValues();
+	std::vector<double> * peakValues = runner()->triggerData()->peakValues();
+	std::vector<double> * baseLines = runner()->triggerData()->baseLines();
 
+	auto p = sort_permutation(*triggerTimes);
+
+	(*triggerTimes) = apply_permutation((*triggerTimes), p);
+	(*channels) = apply_permutation((*channels), p);
+	(*values) = apply_permutation((*values), p);
+	(*dipValues) = apply_permutation((*dipValues), p);
+	(*peakValues) = apply_permutation((*peakValues), p);
+	(*dipValues) = apply_permutation((*dipValues), p);
 }
 
 
@@ -116,8 +155,8 @@ void SafTrigger::scanChannel(SafRawDataChannel * channel)
 		if (triggerValue > m_triggerValueCut && !triggered) {
 			std::vector<double>::iterator iSigMax = std::max_element(
 					signals->begin() + i, signals->begin()+i+m_triggerWindowSizeTotal);
-			double val = (*iSigMax) + (*(iSigMax-1)) + (*(iSigMax+1)) - 3*triggerBaseLine;
-			double time = times->at(i);
+			double val = (*iSigMax) + (*(iSigMax-1)) + (*(iSigMax+1)) + (*(iSigMax-2)) + (*(iSigMax+2)) - 5*triggerBaseLine;
+			double time = times->at(iSigMax-signals->begin() - i);
 			//std::cout<<val<<std::endl;
 
 			m_mtx.lock();
