@@ -16,7 +16,9 @@ SafRawDataChannel::SafRawDataChannel(unsigned int glibID, unsigned int channelID
 	m_nEntries(0),
 	m_nTriggers(0),
 	m_nEntriesTotal(0),
-	m_nTriggersTotal(0)
+	m_nTriggersTotal(0),
+	m_baseLineEst(-1),
+	m_nTriggerSamplesWritten(0)
 {
   m_glibID = glibID;
   m_channelID = channelID;
@@ -50,6 +52,20 @@ void SafRawDataChannel::clear()
 
 unsigned int SafRawDataChannel::plotIndex() {
 	return runner()->geometry()->nChannels() * m_glibID + m_channelID;
+}
+
+
+//_____________________________________________________________________________
+
+void SafRawDataChannel::calcBaseLineEst() {
+	int val = channelID() + 100*glibID();
+	std::stringstream ss; ss<<val;
+	std::string name = "temp"+ss.str();
+	TH1F * h = new TH1F(name.c_str(), name.c_str(), 100, 8050, 8250);
+	for (std::vector<double>::iterator i = signals()->begin(); i!=signals()->end(); i++) {
+		h->Fill(*i);
+	}
+	m_baseLineEst = h->GetBinCenter(h->GetMaximumBin());
 }
 
 

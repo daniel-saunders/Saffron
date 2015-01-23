@@ -24,11 +24,13 @@ private:
   unsigned int m_triggerWindowSizeA;
   unsigned int m_triggerWindowSizeB;
   unsigned int m_triggerWindowSizeC;
-  double m_triggerValueCut;
+  std::vector<double> m_triggerValueCuts;
   unsigned int m_nTriggers;
   bool m_caching;
   std::vector<TH1F*> * h_triggerValues;
   void postExecute();
+  unsigned int m_triggerMethod;
+  unsigned int m_nSamplesWritten;
   
 
 public:
@@ -48,6 +50,8 @@ public:
 		std::vector<int> * times, unsigned int i, double * triggerValue, 
 		double * triggerDipValue, double * triggerPeakValue, double * triggerBaseLine, 
 		bool * firstTimeEval, double * cacheA, double * cacheB, double * cacheC);
+	void setTriggerValueCut(unsigned int iMethod, double x) {
+		m_triggerValueCuts[iMethod] = x;}
 };
 
 #endif /* SAFTRIGGER_H_ */

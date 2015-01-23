@@ -54,19 +54,23 @@ private:
 	unsigned int m_threadsPerGlib;
 	unsigned int m_triggerSkip;
 	std::string m_fileName;
+	std::string m_saveFileName;
 
 
 public:
+	double triggerThreshold;
 	// Methods __________________________________________________________________
 	SafRunner();
 	virtual ~SafRunner();
 	void run();
 	void safPrint(std::string output, int printLevel);
 	void eventLoop();
+	double realTimeElapsed() {return 1.*(m_event-m_triggerSkip)*2048*16e-9;}
 
 
 	// Setters and getters ______________________________________________________
 	void setFileName(std::string s) {m_fileName = s;}
+	void setSaveFileName(std::string s) {m_saveFileName = s;}
 	std::string fileName() {return m_fileName;}
 	unsigned int printThreshold() {return m_printThreshold;}
 	void setPrintThreshold(unsigned int printThreshold) {

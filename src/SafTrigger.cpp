@@ -41,9 +41,10 @@ SafTrigger::SafTrigger(SafRunner * runner) :
   m_triggerWindowSizeA(16),
   m_triggerWindowSizeB(8),
   m_triggerWindowSizeC(8),
-  m_triggerValueCut(90),
   m_nTriggers(0),
-  m_caching(true)
+  m_caching(true),
+  m_triggerMethod(1),
+  m_nSamplesWritten(0)
 {
 	m_triggerWindowSizeTotal = m_triggerWindowSizeA + m_triggerWindowSizeB
 			+ m_triggerWindowSizeC;
@@ -73,7 +74,8 @@ void SafTrigger::initialize()
 		std::stringstream ssGlib; ssGlib<<i;
 		instance_direc->mkdir(("FirstEventTriggerValues/Glib" + ssGlib.str()).c_str());
 	}
-
+	m_triggerValueCuts.push_back(90);
+	m_triggerValueCuts.push_back(runner()->triggerThreshold);
 }
 
 
@@ -117,7 +119,7 @@ void SafTrigger::postExecute()
 	(*values) = apply_permutation((*values), p);
 	(*dipValues) = apply_permutation((*dipValues), p);
 	(*peakValues) = apply_permutation((*peakValues), p);
-	(*dipValues) = apply_permutation((*dipValues), p);
+	(*baseLines) = apply_permutation((*baseLines), p);
 }
 
 
@@ -126,6 +128,10 @@ void SafTrigger::postExecute()
 void SafTrigger::scanChannel(SafRawDataChannel * channel)
 {
 	unsigned int nTriggers = 0;
+	unsigned int nTriggeredSamplesWritten = 0;
+	unsigned int nSinceLastTrigger = 10;
+	bool writing = false;
+	unsigned int nWritten = 0;
 	std::vector<int> * times = channel->times();
 	std::vector<double> * signals = channel->signals();
 	if (times->size() <= m_triggerWindowSizeTotal) return;
@@ -152,12 +158,15 @@ void SafTrigger::scanChannel(SafRawDataChannel * channel)
 		
 	  if (event() == 0) h_triggerValues->at(plotIndex)->SetBinContent(i, triggerValue);
 		
-		if (triggerValue > m_triggerValueCut && !triggered) {
+	  double tempTriggerValue;
+	  if (m_triggerMethod == 0) tempTriggerValue = triggerValue;
+	  else if (m_triggerMethod == 1)
+	  	tempTriggerValue = signals->at(i) - channel->baseLineEst();
+		if (tempTriggerValue > m_triggerValueCuts[m_triggerMethod] && !triggered && channel->baseLineEst() > 5000) {
 			std::vector<double>::iterator iSigMax = std::max_element(
 					signals->begin() + i, signals->begin()+i+m_triggerWindowSizeTotal);
 			double val = (*iSigMax) + (*(iSigMax-1)) + (*(iSigMax+1)) + (*(iSigMax-2)) + (*(iSigMax+2)) - 5*triggerBaseLine;
-			double time = times->at(iSigMax-signals->begin() - i);
-			//std::cout<<val<<std::endl;
+			double time = times->at(i);
 
 			m_mtx.lock();
 			runner()->triggerData()->times()->push_back(time);
@@ -168,14 +177,45 @@ void SafTrigger::scanChannel(SafRawDataChannel * channel)
 			runner()->triggerData()->baseLines()->push_back(triggerBaseLine);
 			m_nTriggers++;
 			m_mtx.unlock();
+
+
 			nTriggers++;
 			triggered = true;
-		}
-		else if (triggerValue < m_triggerValueCut) triggered = false;
+			nSinceLastTrigger = 0;
+			unsigned int prevWindow = 8;
 
+			// Data counting _______
+			if (!writing) {
+				writing = true;
+				if (nSinceLastTrigger < prevWindow) nTriggeredSamplesWritten+=nSinceLastTrigger;
+				else nTriggeredSamplesWritten+=prevWindow;
+			}
+
+			nWritten = prevWindow;
+
+		}
+		else if (triggerValue < m_triggerValueCuts[m_triggerMethod]) triggered = false;
+
+
+		// Data counting _______
+		if (writing) {
+			nWritten += 1;
+			nTriggeredSamplesWritten += 1;
+			unsigned int stop = 32;
+			if (nWritten > stop) {
+				nWritten = 0;
+				writing = false;
+			}
+		}
+		else nSinceLastTrigger++;
 	}
 
-	channel->addNTriggers(channel->nTriggers() + nTriggers);
+	m_mtx.lock();
+	m_nSamplesWritten += nTriggeredSamplesWritten;
+	m_mtx.unlock();
+
+	channel->addNTriggers(nTriggers);
+	channel->addNTriggerSamplesWritten(nTriggeredSamplesWritten);
 }
 
 
@@ -234,16 +274,16 @@ void SafTrigger::evalTimeWindow(std::vector<double> * signals,
 
 void SafTrigger::finalize()
 {
-	std::cout<<"nTriggers:\t"<<m_nTriggers<<std::endl;
+	std::cout<<"nTriggers:\t"<<m_nTriggers<<"\t"<<"TriggerThreshold:\t"<<m_triggerValueCuts[m_triggerMethod]<<std::endl;
+	std::cout<<"TriggerRate(kHz)\t"<<m_nTriggers/(1000.*runner()->realTimeElapsed())<<std::endl;
+	std::cout<<"DataRate(MBs)\t"<<(m_nSamplesWritten*2)/(1000000.*runner()->realTimeElapsed());
 
 	for (unsigned int i=0; i<h_triggerValues->size(); i++) {
 		int iGlib = i/runner()->geometry()->nChannels();
 		std::stringstream ssGlib; ssGlib << iGlib;
 		runner()->saveFile()->cd((name() + "/FirstEventTriggerValues/Glib" + ssGlib.str()).c_str());
-
 		h_triggerValues->at(i)->Write();
 	}
-
 }
 
 

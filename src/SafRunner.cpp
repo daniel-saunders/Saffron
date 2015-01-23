@@ -17,15 +17,17 @@ SafRunner::SafRunner() :
   m_eventTimeWindow(2048),
   m_event(0),
   m_timeZero(0),
-  m_printRate(50),
-  m_triggerSkip(0)
+  m_printRate(10),
+  m_triggerSkip(0),
+  triggerThreshold(100),
+  m_saveFileName("Saffron-histos.root")
 {
-	m_fileName = "/storage/SOLID/SM1_14Jan2015_2220_run0_scoperun_2.0V_500000event.root";
+	m_fileName = "/storage/SOLID/SM1_23Jan2015_0033_run0_scoperun_ov2900b.root";
 	// Default algorithm list.
 	m_algorithms.push_back(new SafEventBuilder(this));
 	m_algorithms.push_back(new SafRawPlots(this, false));
-  m_algorithms.push_back(new SafFilter(this));
-  m_algorithms.push_back(new SafRawPlots(this, true));
+//  m_algorithms.push_back(new SafFilter(this));
+//  m_algorithms.push_back(new SafRawPlots(this, true));
 //	m_algorithms.push_back(new SafTrigger(this));
 //	m_algorithms.push_back(new SafTriggerPlots(this));
 //	m_algorithms.push_back(new SafPeakFitter(this));
@@ -35,11 +37,8 @@ SafRunner::SafRunner() :
 	m_geometry = new SafGeometry();
 
 	// Options.
-	m_nEvents = 100;
+	m_nEvents = 4500;
 	m_runMode = 1; // 0 for MC, 1 for real data.
-
-	// Save file.
-	m_saveFile = new TFile("Saffron-histos.root", "RECREATE");
 }
 
 
@@ -63,6 +62,9 @@ void SafRunner::safPrint(std::string text, int level)
 
 void SafRunner::run()
 {
+	// Save file.
+	m_saveFile = new TFile(m_saveFileName.c_str(), "RECREATE");
+
 	// Default runner of Saffron. In turn, calls all initialise, execute and
 	// finalize methods of all SafAlgorithms used in this run.
 

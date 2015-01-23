@@ -42,6 +42,8 @@ private:
 	TH1F * h_gains;
 	bool m_calculateGains;
 	unsigned int m_nFinalizeThreads;
+	TH1F * h_nBaseLineEstVsChannel;
+	bool m_smoothing;
 
 
 public:
@@ -56,6 +58,7 @@ public:
   	int iThread);
 
   void calculateGains(unsigned int iLow, unsigned iUp);
+  void smooth(TH1F * h, int plotIndex);
 };
 
 #endif /* SAFRAWPLOTS_H_ */

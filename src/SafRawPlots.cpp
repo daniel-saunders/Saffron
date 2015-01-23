@@ -14,8 +14,9 @@ SafRawPlots::SafRawPlots(SafRunner * runner, bool filtered) :
   SafAlgorithm(runner, "SafRawPlots"),
   m_diffBinRange(6),
   m_nSeekedRoots(3),
-  m_calculateGains(false),
-  m_nFinalizeThreads(10)
+  m_calculateGains(true),
+  m_nFinalizeThreads(10),
+  m_smoothing(true)
 {
 	m_filtered = filtered;
 }
@@ -34,7 +35,7 @@ SafRawPlots::~SafRawPlots()
 
 void SafRawPlots::initialize()
 {
-	m_threading = true;
+	m_threading = false;
 
 	std::string direcName = name();
 	if (m_filtered) direcName += "-Filtered";
@@ -47,16 +48,16 @@ void SafRawPlots::initialize()
 
 	std::string name = "Signal";
 	if (m_filtered) name += "-Filtered";
-	h_signals = initPerChannelPlots(name.c_str(), name.c_str(), 6000, 7000, 16000);
+	h_signals = initPerChannelPlots(name.c_str(), name.c_str(), 4500, 7000, 16000);
 	name = "SignalDifferential";
 	if (m_filtered) name += "-Filtered";
-	h_signalsDiff = initPerChannelPlots(name.c_str(), name.c_str(), 6000, 7000, 16000);
+	h_signalsDiff = initPerChannelPlots(name.c_str(), name.c_str(), 4500, 7000, 16000);
 	name = "SignalDoubleDifferential";
 	if (m_filtered) name += "-Filtered";
-	h_signalsDoubleDiff = initPerChannelPlots(name.c_str(), name.c_str(), 6000, 7000, 16000);
+	h_signalsDoubleDiff = initPerChannelPlots(name.c_str(), name.c_str(), 4500, 7000, 16000);
 	name = "SignalTripleDifferential";
 	if (m_filtered) name += "-Filtered";
-	h_signalsTripleDiff = initPerChannelPlots(name.c_str(), name.c_str(), 6000, 7000, 16000);
+	h_signalsTripleDiff = initPerChannelPlots(name.c_str(), name.c_str(), 4500, 7000, 16000);
 
 
 	int nChannels = nC*nG;
@@ -64,6 +65,7 @@ void SafRawPlots::initialize()
 			nChannels-0.5, 4500, 7000., 16000.);
 	h_signalMeans = new TH1F("SignalMeans", "SignalMeans", nChannels, -0.5, nChannels-0.5);
 	h_signalWidths = new TH1F("SignalWidths", "SignalWidths", nChannels, -0.5, nChannels-0.5);
+	h_nBaseLineEstVsChannel = new TH1F("BaseLineEstimates", "BaseLineEstimates", nChannels, -0.5, nChannels-0.5);
 
 
 	// Root file directories.
@@ -132,20 +134,22 @@ void SafRawPlots::execute()
 
 void SafRawPlots::finalize()
 {
-	if (m_calculateGains && m_threading && !m_forceSingleThread) {
-		unsigned int step = h_signals->size()/m_nFinalizeThreads;
-		unsigned int iUp = step;
-		std::vector<std::thread> threads;
-		while (iUp < h_signals->size()) {
-			std::cout<<"Starting thread, with values: "<<iUp-step<<"\t"<<iUp<<std::endl;
-			threads.push_back(std::thread(&SafRawPlots::calculateGains, this, iUp-step, iUp));
-			iUp += step;
-		}
-		for (std::vector<std::thread>::iterator i = threads.begin();
-			i != threads.end(); i++)
-			(*i).join();
-	}
-	else if (m_calculateGains) calculateGains(0, 5);
+//	if (m_calculateGains && m_threading && !m_forceSingleThread) {
+//		unsigned int step = h_signals->size()/m_nFinalizeThreads;
+//		unsigned int iUp = step;
+//		std::vector<std::thread> threads;
+//		while (iUp < h_signals->size()) {
+//			std::cout<<"Starting thread, with values: "<<iUp-step<<"\t"<<iUp<<std::endl;
+//			threads.push_back(std::thread(&SafRawPlots::calculateGains, this, iUp-step, iUp));
+//			iUp += step;
+//		}
+//		for (std::vector<std::thread>::iterator i = threads.begin();
+//			i != threads.end(); i++)
+//			(*i).join();
+//	}
+//	else if (m_calculateGains)
+
+	calculateGains(0, 74);
 
 
 	std::string direcName = name();
@@ -198,6 +202,14 @@ void SafRawPlots::finalize()
 		}
 	}
 
+	for (unsigned int i=0; i<runner()->geometry()->nChannels(); i++) {
+		for (unsigned int j=0; j<runner()->geometry()->nGlibs(); j++) {
+			SafRawDataChannel * channel = runner()->rawData()->channel(j, i);
+			if (channel->baseLineEstSet())
+				h_nBaseLineEstVsChannel->SetBinContent(channel->plotIndex(), channel->baseLineEst());
+		}
+	}
+
 	runner()->saveFile()->cd(direcName.c_str());
 	h_allSignals->Write();
 	h_signalMeans->Write();
@@ -208,6 +220,7 @@ void SafRawPlots::finalize()
 	h_avSignalPerChannelOfEvents->Write();
 	h_gains->Write();
 	h_gainsPerChannel->Write();
+	h_nBaseLineEstVsChannel->Write();
 
 	runner()->saveFile()->cd();
 	std::cout<<"REF: "<<h_signals->at(0)->GetMean()<<std::endl;
@@ -216,22 +229,12 @@ void SafRawPlots::finalize()
 
 //_____________________________________________________________________________
 
-//double fitf(double * v, double * par) {
-//	double x = *v;
-//	double value = 0;
-//	double shift = par[5];
-//	value += par[0]*TMath::Landau(x, par[1], par[2]);
-//	value += par[6]*TMath::Gaus(x, par[3], par[4]);
-//	value += par[7]*TMath::Gaus(x, par[3] + shift, par[4]);
-//	value += par[8]*TMath::Gaus(x, par[3] + 2*shift, par[4]);
-//}
-
-
 void SafRawPlots::calculateGains(unsigned int iLow, unsigned int iUp) {
 	std::vector<TH1F*>::iterator ih;
 	int iPlot = iLow;
 
 	for (ih = (h_signals->begin()+iLow); ih!=(h_signals->begin()+iUp); ih++) {
+		if (m_smoothing) smooth(*ih, iPlot);
 		int istart = h_signals->at(iPlot)->GetMaximumBin();
 	  int iend = istart + 200;
 		for (int i=istart; i<iend; i++) {
@@ -247,6 +250,7 @@ void SafRawPlots::calculateGains(unsigned int iLow, unsigned int iUp) {
 			double x = (*ih)->GetBinCenter(i+m_diffBinRange/2);
 			if (fitStatus == 0) {
 				h_signalsDiff->at(iPlot)->SetBinContent(i+m_diffBinRange/2, fit->Derivative(x));
+				std::cout<<fit->Derivative(x)<<std::endl;
 			}
 			delete fit;
 		}
@@ -384,3 +388,27 @@ void SafRawPlots::threadExecute(unsigned int iGlib, unsigned int iLow,
 
 
 //_____________________________________________________________________________
+
+void SafRawPlots::smooth(TH1F * h, int plotIndex) {
+	if (plotIndex == 379) return;
+	int istart = 10;
+	if (h->GetMaximumBin() > istart) istart = h->GetMaximumBin();
+	int iend = istart + 500;
+	for (unsigned int i=istart; i<iend; i++) {
+		double content = h->GetBinContent(i);
+		content += h->GetBinContent(i+1);
+		content += h->GetBinContent(i-1);
+		content += h->GetBinContent(i+2);
+		content += h->GetBinContent(i-2);
+		content += h->GetBinContent(i+3);
+		content += h->GetBinContent(i-3);
+		content /= 7.0;
+		h->SetBinContent(i, content);
+
+		if (iend > 2000) break;
+	}
+}
+
+
+//_____________________________________________________________________________
+

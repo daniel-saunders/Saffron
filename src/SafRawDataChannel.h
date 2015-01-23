@@ -31,6 +31,10 @@ private:
 	std::vector<double> m_signals;
 	unsigned int m_nEntriesTotal;
 	unsigned int m_nTriggersTotal;
+	double m_baseLineEst;
+	bool m_baseLineEstSet;
+	unsigned int m_nTriggerSamplesWritten;
+
 
 
 public:
@@ -39,14 +43,25 @@ public:
 			SafRawDataSet * rawData, SafRunner * runner);
 	virtual ~SafRawDataChannel();
 	void clear();
+	void calcBaseLineEst();
 
 
 	// Setters and getters ______________________________________________________
+	void addNTriggerSamplesWritten(unsigned int n) {m_nTriggerSamplesWritten += n;}
 	unsigned int glibID() {return m_glibID;}
   unsigned int nEntries() {return m_nEntries;}
   unsigned int nTriggers() {return m_nTriggers;}
+  bool baseLineEstSet() {return m_baseLineEstSet;}
+  double baseLineEst() {
+  	if (!m_baseLineEstSet) {
+  		calcBaseLineEst();
+  		m_baseLineEstSet = true;
+  	}
+  	return m_baseLineEst;
+  }
+  void setBaseLineEst(double b) {m_baseLineEst = b;}
   void addNEntries(unsigned int n) {
-  	m_nEntries += n;
+  	m_nEntries = n;
     m_nEntriesTotal += n;
   }
 
@@ -55,15 +70,17 @@ public:
   }
 
   void addNTriggers(unsigned int n) {
-  	m_nTriggers += n;
+  	m_nTriggers = n;
     m_nTriggersTotal += n;
   }
+
 	unsigned int channelID() {return m_channelID;}
 	std::vector<int> * times() {return &m_times;}
 	std::vector<double> * signals() {return &m_signals;}
 	unsigned int plotIndex();
 	unsigned int nEntriesTotal() {return m_nEntriesTotal;}
 	unsigned int nTriggersTotal() {return m_nTriggersTotal;}
+	unsigned int nTriggerSamplesWritten() {return m_nTriggerSamplesWritten;}
 };
 
 #endif /* SAFRAWDATACHANNEL_H_ */

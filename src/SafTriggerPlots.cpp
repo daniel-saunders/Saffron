@@ -67,6 +67,11 @@ void SafTriggerPlots::initialize()
 		std::stringstream ssGlib; ssGlib<<i;
 		instance_direc->mkdir(("TriggerValues/Glib" + ssGlib.str()).c_str());
 	}
+
+	h_dataRates = new TH1F("TriggerDataRate", "TriggerDataRate; ChannelID; SamplesWrittenPerSec", nChannels, -0.5, nChannels-0.5);
+	h_triggerRate = new TH1F("TriggerRate", "TriggerRate; ChannelID; TriggerRate(Hz)", nChannels, -0.5, nChannels-0.5);
+	h_nTriggersVsEvents = new TH2F("nTriggersVsEvents", "nTriggersVsEvents",
+			nChannels, -0.5, nChannels-0.5, runner()->nEvents(), 0, runner()->nEvents());
 }
 
 
@@ -101,6 +106,14 @@ void SafTriggerPlots::fill()
 		if (runner()->event() == 0)
 			h_firstEventPeaks->at(plotIndex)->Fill(data->times()->at(i), data->values()->at(i));
 	}
+
+
+	for (unsigned int i=0; i<runner()->geometry()->nChannels(); i++) {
+		for (unsigned int j=0; j<runner()->geometry()->nGlibs(); j++) {
+			SafRawDataChannel * channel = runner()->rawData()->channel(j, i);
+			h_nTriggersVsEvents->SetBinContent(channel->plotIndex(), m_event, channel->nTriggers());
+		}
+	}
 }
 
 
@@ -130,9 +143,12 @@ void SafTriggerPlots::finalize()
 	for (unsigned int i=0; i<nGlibs; i++) {
 		for (unsigned int j=0; j<nChannels; j++) {
 			SafRawDataChannel * channel = runner()->rawData()->channel(i, j);
-			h_nTriggers->SetBinContent(i*runner()->geometry()->nChannels() + j, 
-					channel->nTriggersTotal()/(1.*runner()->nEvents()));
-			//std::cout<<channel->nTriggers()<<std::endl;
+			unsigned int plotIndex = channel->plotIndex();
+			h_nTriggers->SetBinContent(plotIndex, channel->nTriggersTotal()/(1.*runner()->nEvents()));
+			double triggerRate = channel->nTriggersTotal()/runner()->realTimeElapsed();
+			h_triggerRate->SetBinContent(plotIndex, triggerRate);
+			double dataRate = channel->nTriggerSamplesWritten()/runner()->realTimeElapsed();
+			h_dataRates->SetBinContent(plotIndex, dataRate);
 		}
 	}
 
@@ -152,6 +168,9 @@ void SafTriggerPlots::finalize()
 	h_peakVsValues->Write();
 	h_nTriggers->Write();
 	h_valuesVsChannel->Write();
+	h_dataRates->Write();
+	h_triggerRate->Write();
+	h_nTriggersVsEvents->Write();
 }
 
 

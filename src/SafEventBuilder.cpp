@@ -83,6 +83,7 @@ void SafEventBuilder::execute()
 
 void SafEventBuilder::finalize()
 {
+	//m_files[0]->Close();
 }
 
 

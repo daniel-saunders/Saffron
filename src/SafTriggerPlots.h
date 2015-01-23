@@ -27,6 +27,9 @@ private:
 	TH2F * h_peakVsValues;
 	TH1F * h_nTriggers;
 	TH2F * h_valuesVsChannel;
+	TH1F * h_dataRates;
+	TH1F * h_triggerRate;
+	TH2F * h_nTriggersVsEvents;
 
 public:
   // Methods __________________________________________________________________
