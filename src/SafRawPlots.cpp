@@ -35,7 +35,7 @@ SafRawPlots::~SafRawPlots()
 
 void SafRawPlots::initialize()
 {
-	m_threading = false;
+	m_threading = true;
 
 	std::string direcName = name();
 	if (m_filtered) direcName += "-Filtered";
@@ -232,8 +232,11 @@ void SafRawPlots::finalize()
 void SafRawPlots::calculateGains(unsigned int iLow, unsigned int iUp) {
 	std::vector<TH1F*>::iterator ih;
 	int iPlot = iLow;
+	std::cout<<"Calculating gains - this can take some minutes..."<<std::endl;
 
 	for (ih = (h_signals->begin()+iLow); ih!=(h_signals->begin()+iUp); ih++) {
+		if (iPlot % 10 == 0) std::cout<<"Progress: "<<iPlot<<"\t/"<<iUp*3<<std::endl;
+
 		if (m_smoothing) smooth(*ih, iPlot);
 		int istart = h_signals->at(iPlot)->GetMaximumBin();
 	  int iend = istart + 200;
@@ -250,7 +253,6 @@ void SafRawPlots::calculateGains(unsigned int iLow, unsigned int iUp) {
 			double x = (*ih)->GetBinCenter(i+m_diffBinRange/2);
 			if (fitStatus == 0) {
 				h_signalsDiff->at(iPlot)->SetBinContent(i+m_diffBinRange/2, fit->Derivative(x));
-				std::cout<<fit->Derivative(x)<<std::endl;
 			}
 			delete fit;
 		}
@@ -259,6 +261,7 @@ void SafRawPlots::calculateGains(unsigned int iLow, unsigned int iUp) {
 
 	iPlot = iLow;
 	for (ih = (h_signalsDiff->begin()+iLow); ih!=(h_signalsDiff->begin()+iUp); ih++) {
+		if (iPlot % 10 == 0) std::cout<<"Progress: "<<iPlot+iUp<<"\t/"<<iUp*3<<std::endl;
 		int istart = h_signals->at(iPlot)->GetMaximumBin();
 	  int iend = istart + 200;
 		for (int i=istart; i<iend; i++) {
@@ -282,6 +285,7 @@ void SafRawPlots::calculateGains(unsigned int iLow, unsigned int iUp) {
 
 	iPlot = iLow;
 	for (ih = (h_signalsDoubleDiff->begin()+iLow); ih!=(h_signalsDoubleDiff->begin()+iUp); ih++) {
+		if (iPlot % 10 == 0) std::cout<<"Progress: "<<iPlot + 2*iUp<<"\t/"<<iUp*3<<std::endl;
 		int istart = h_signals->at(iPlot)->GetMaximumBin();
 	  int iend = istart + 200;
 		for (int i=istart; i<iend; i++) {

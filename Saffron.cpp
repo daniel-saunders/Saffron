@@ -12,26 +12,16 @@
 int main(int argc, char *argv[])
 {
   gROOT->ProcessLine("gErrorIgnoreLevel = kFatal;");
-//  SafRunner runner;
-//
-//
-//  if (argc == 2) {
-//  	std::string fileName(argv[1]);
-//  	std::cout<<fileName<<std::endl;
-//  	runner.setFileName(fileName);
-//  }
-//
-//	runner.safPrint("Running Saffron", 0);
-	//runner.run();
+  SafRunner runner;
 
-  double t = 150;
 
-	std::string name = "Saffron-histos.root";
-	std::stringstream ss;
-	ss<<t;
-	SafRunner runner;
-	runner.triggerThreshold = t;
-	runner.setSaveFileName(name);
+  if (argc == 2) {
+  	std::string fileName(argv[1]);
+  	std::cout<<fileName<<std::endl;
+  	runner.setFileName(fileName);
+  }
+
+	runner.safPrint("Running Saffron", 0);
 	runner.run();
 
 	return 0;
