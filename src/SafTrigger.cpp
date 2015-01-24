@@ -68,14 +68,26 @@ void SafTrigger::initialize()
 	h_triggerValues = initPerChannelPlots("FirstEventTriggerValues", "FirstEventTriggerValues", 
 		runner()->eventTimeWindow(), 0.0, runner()->eventTimeWindow());
 
+	h_triggerOnOff = initPerChannelPlots("FirstEventTriggerOnOff", "FirstEventTriggerOnOff",
+		runner()->eventTimeWindow(), 0.0, runner()->eventTimeWindow());
+
+	h_writingOnOff = initPerChannelPlots("FirstEventWritingOnOff", "FirstEventWritingOnOff",
+		runner()->eventTimeWindow(), 0.0, runner()->eventTimeWindow());
+
 	TDirectory * instance_direc = runner()->saveFile()->mkdir(name().c_str());
 	instance_direc->mkdir("FirstEventTriggerValues");
+	instance_direc->mkdir("FirstEventTriggerOnOff");
+	instance_direc->mkdir("FirstEventWritingOnOff");
 	for (unsigned int i=0; i<runner()->geometry()->nGlibs(); i++) {
 		std::stringstream ssGlib; ssGlib<<i;
 		instance_direc->mkdir(("FirstEventTriggerValues/Glib" + ssGlib.str()).c_str());
+		instance_direc->mkdir(("FirstEventTriggerOnOff/Glib" + ssGlib.str()).c_str());
+		instance_direc->mkdir(("FirstEventWritingOnOff/Glib" + ssGlib.str()).c_str());
 	}
 	m_triggerValueCuts.push_back(90);
 	m_triggerValueCuts.push_back(runner()->triggerThreshold);
+
+	std::cout<<"Trigger threshold: "<<m_triggerValueCuts[m_triggerMethod]<<std::endl;
 }
 
 
@@ -163,15 +175,23 @@ void SafTrigger::scanChannel(SafRawDataChannel * channel)
 	  else if (m_triggerMethod == 1)
 	  	tempTriggerValue = signals->at(i) - channel->baseLineEst();
 		if (tempTriggerValue > m_triggerValueCuts[m_triggerMethod] && !triggered && channel->baseLineEst() > 5000) {
-			std::vector<double>::iterator iSigMax = std::max_element(
-					signals->begin() + i, signals->begin()+i+m_triggerWindowSizeTotal);
-			double val = (*iSigMax) + (*(iSigMax-1)) + (*(iSigMax+1)) + (*(iSigMax-2)) + (*(iSigMax+2)) - 5*triggerBaseLine;
+			double val;
+			if (m_triggerMethod == 1) {
+				int nAhead = 1;
+				for (unsigned int iAhead=0; iAhead<nAhead; iAhead++) {
+					val += signals->at(i+iAhead);
+					if (i+iAhead > signals->size()) break;
+				}
+				val -= nAhead*channel->baseLineEst();
+			}
+			else val = triggerValue;
 			double time = times->at(i);
 
 			m_mtx.lock();
 			runner()->triggerData()->times()->push_back(time);
 			runner()->triggerData()->channels()->push_back(channel);
 			runner()->triggerData()->values()->push_back(val);
+			runner()->triggerData()->values()->push_back(triggerValue);
 			runner()->triggerData()->dipValues()->push_back(triggerDipValue);
 			runner()->triggerData()->peakValues()->push_back(triggerPeakValue);
 			runner()->triggerData()->baseLines()->push_back(triggerBaseLine);
@@ -208,6 +228,11 @@ void SafTrigger::scanChannel(SafRawDataChannel * channel)
 			}
 		}
 		else nSinceLastTrigger++;
+
+		if (m_event == 0) {
+			h_triggerOnOff->at(channel->plotIndex())->SetBinContent(i, int(triggered));
+			h_writingOnOff->at(channel->plotIndex())->SetBinContent(i, int(writing));
+		}
 	}
 
 	m_mtx.lock();
@@ -283,6 +308,20 @@ void SafTrigger::finalize()
 		std::stringstream ssGlib; ssGlib << iGlib;
 		runner()->saveFile()->cd((name() + "/FirstEventTriggerValues/Glib" + ssGlib.str()).c_str());
 		h_triggerValues->at(i)->Write();
+	}
+
+	for (unsigned int i=0; i<h_triggerValues->size(); i++) {
+		int iGlib = i/runner()->geometry()->nChannels();
+		std::stringstream ssGlib; ssGlib << iGlib;
+		runner()->saveFile()->cd((name() + "/FirstEventTriggerOnOff/Glib" + ssGlib.str()).c_str());
+		h_triggerOnOff->at(i)->Write();
+	}
+
+	for (unsigned int i=0; i<h_triggerValues->size(); i++) {
+		int iGlib = i/runner()->geometry()->nChannels();
+		std::stringstream ssGlib; ssGlib << iGlib;
+		runner()->saveFile()->cd((name() + "/FirstEventWritingOnOff/Glib" + ssGlib.str()).c_str());
+		h_writingOnOff->at(i)->Write();
 	}
 }
 

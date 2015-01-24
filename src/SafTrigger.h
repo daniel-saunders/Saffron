@@ -28,6 +28,8 @@ private:
   unsigned int m_nTriggers;
   bool m_caching;
   std::vector<TH1F*> * h_triggerValues;
+  std::vector<TH1F*> * h_triggerOnOff;
+  std::vector<TH1F*> * h_writingOnOff;
   void postExecute();
   unsigned int m_triggerMethod;
   unsigned int m_nSamplesWritten;

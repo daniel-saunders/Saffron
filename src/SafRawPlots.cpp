@@ -14,7 +14,7 @@ SafRawPlots::SafRawPlots(SafRunner * runner, bool filtered) :
   SafAlgorithm(runner, "SafRawPlots"),
   m_diffBinRange(6),
   m_nSeekedRoots(3),
-  m_calculateGains(true),
+  m_calculateGains(false),
   m_nFinalizeThreads(10),
   m_smoothing(true)
 {
@@ -149,7 +149,7 @@ void SafRawPlots::finalize()
 //	}
 //	else if (m_calculateGains)
 
-	calculateGains(0, 74);
+	if (m_calculateGains) calculateGains(0, 74);
 
 
 	std::string direcName = name();

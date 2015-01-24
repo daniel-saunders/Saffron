@@ -19,17 +19,17 @@ SafRunner::SafRunner() :
   m_timeZero(0),
   m_printRate(10),
   m_triggerSkip(0),
-  triggerThreshold(100),
+  triggerThreshold(150),
   m_saveFileName("Saffron-histos.root")
 {
-	m_fileName = "/storage/SOLID/SM1_22Jan2015_1619_run0_scoperun_GE40.root";
+	m_fileName = "/storage/SOLID/SM1_23Jan2015_0120_run1_scoperun_ov2300.root";
 	// Default algorithm list.
 	m_algorithms.push_back(new SafEventBuilder(this));
 	m_algorithms.push_back(new SafRawPlots(this, false));
-  m_algorithms.push_back(new SafFilter(this));
-  m_algorithms.push_back(new SafRawPlots(this, true));
-//	m_algorithms.push_back(new SafTrigger(this));
-//	m_algorithms.push_back(new SafTriggerPlots(this));
+//  m_algorithms.push_back(new SafFilter(this));
+//  m_algorithms.push_back(new SafRawPlots(this, true));
+	m_algorithms.push_back(new SafTrigger(this));
+	m_algorithms.push_back(new SafTriggerPlots(this));
 //	m_algorithms.push_back(new SafPeakFitter(this));
 //	m_algorithms.push_back(new SafCoincidenceFinder(this));
 
@@ -37,7 +37,7 @@ SafRunner::SafRunner() :
 	m_geometry = new SafGeometry();
 
 	// Options.
-	m_nEvents = 2000;
+	m_nEvents = 4500;
 	m_runMode = 1; // 0 for MC, 1 for real data.
 }
 

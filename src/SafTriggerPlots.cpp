@@ -33,7 +33,7 @@ void SafTriggerPlots::initialize()
 	unsigned int nG = runner()->geometry()->nGlibs();
 	unsigned int nC = runner()->geometry()->nChannels();
 	
-	h_values = new TH1F("TriggerValues", "TriggerValues", 1000, 0, 10000);
+	h_values = new TH1F("TriggerValues", "TriggerValues", 1000, 0, 1000);
 	h_dipValues = new TH1F("DipValues", "DipValues", 500, -1000, 2500);
 	h_peakValues = new TH1F("PeakValues", "PeakValues", 500, -1000, 2500);
 	h_dipVsPeakValues = new TH2F("PeakVsDipValues", "PeakVsDipValues", 500, -1000, 
