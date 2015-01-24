@@ -14,7 +14,7 @@ SafRawPlots::SafRawPlots(SafRunner * runner, bool filtered) :
   SafAlgorithm(runner, "SafRawPlots"),
   m_diffBinRange(6),
   m_nSeekedRoots(3),
-  m_calculateGains(false),
+  m_calculateGains(true),
   m_nFinalizeThreads(10),
   m_smoothing(true)
 {
@@ -235,7 +235,7 @@ void SafRawPlots::calculateGains(unsigned int iLow, unsigned int iUp) {
 	std::cout<<"Calculating gains - this can take some minutes..."<<std::endl;
 
 	for (ih = (h_signals->begin()+iLow); ih!=(h_signals->begin()+iUp); ih++) {
-		if (iPlot % 10 == 0) std::cout<<"Progress: "<<iPlot<<"\t/"<<iUp*3<<std::endl;
+		if (iPlot % 10 == 0) std::cout<<"Progress: "<<iPlot<<"\t/"<<iUp*4<<std::endl;
 
 		if (m_smoothing) smooth(*ih, iPlot);
 		int istart = h_signals->at(iPlot)->GetMaximumBin();
@@ -261,7 +261,7 @@ void SafRawPlots::calculateGains(unsigned int iLow, unsigned int iUp) {
 
 	iPlot = iLow;
 	for (ih = (h_signalsDiff->begin()+iLow); ih!=(h_signalsDiff->begin()+iUp); ih++) {
-		if (iPlot % 10 == 0) std::cout<<"Progress: "<<iPlot+iUp<<"\t/"<<iUp*3<<std::endl;
+		if (iPlot % 10 == 0) std::cout<<"Progress: "<<iPlot+iUp<<"\t/"<<iUp*4<<std::endl;
 		int istart = h_signals->at(iPlot)->GetMaximumBin();
 	  int iend = istart + 200;
 		for (int i=istart; i<iend; i++) {
@@ -285,7 +285,7 @@ void SafRawPlots::calculateGains(unsigned int iLow, unsigned int iUp) {
 
 	iPlot = iLow;
 	for (ih = (h_signalsDoubleDiff->begin()+iLow); ih!=(h_signalsDoubleDiff->begin()+iUp); ih++) {
-		if (iPlot % 10 == 0) std::cout<<"Progress: "<<iPlot + 2*iUp<<"\t/"<<iUp*3<<std::endl;
+		if (iPlot % 10 == 0) std::cout<<"Progress: "<<iPlot + 2*iUp<<"\t/"<<iUp*4<<std::endl;
 		int istart = h_signals->at(iPlot)->GetMaximumBin();
 	  int iend = istart + 200;
 		for (int i=istart; i<iend; i++) {
@@ -309,6 +309,8 @@ void SafRawPlots::calculateGains(unsigned int iLow, unsigned int iUp) {
 
 	iPlot = iLow;
 	for (ih = (h_signalsTripleDiff->begin()+iLow); ih!=(h_signalsTripleDiff->begin()+iUp); ih++) {
+		bool gainSet = false;
+		if (iPlot % 10 == 0) std::cout<<"Progress 4: "<<iPlot + 3*iUp<<"\t/"<<iUp*4<<std::endl;
 		std::vector<double> roots;
 		int istart = h_signals->at(iPlot)->GetMaximumBin();
 	  int iend = istart + 500;
@@ -317,19 +319,19 @@ void SafRawPlots::calculateGains(unsigned int iLow, unsigned int iUp) {
 					(*ih)->GetBinContent(i+1) < 0 &&
 					(*ih)->GetBinContent(i+2) > 0 &&
 					(*ih)->GetBinContent(i+3) > 0) {
-				std::stringstream ss;
-				ss<<i;
-				std::string name = "Fit" + ss.str();
-				m_mtx.lock();
-				TF1 * fit = new TF1(name.c_str(), "pol1", (*ih)->GetBinCenter(i), (*ih)->GetBinCenter(i+4));
-				int fitStatus = (*ih)->Fit(name.c_str(), "RQ");
-				m_mtx.unlock();
-				double root;
-				if (fitStatus == 0) root = -fit->GetParameter(0)/fit->GetParameter(1);
-				else root = (*ih)->GetBinLowEdge(i+2);
+//				std::stringstream ss;
+//				ss<<i;
+//				std::string name = "Fit" + ss.str();
+//				m_mtx.lock();
+//				TF1 * fit = new TF1(name.c_str(), "pol1", (*ih)->GetBinCenter(i), (*ih)->GetBinCenter(i+4));
+//				int fitStatus = (*ih)->Fit(name.c_str(), "RQ");
+//				m_mtx.unlock();
+				double root = (*ih)->GetBinLowEdge(i+2);
+//				if (fitStatus == 0) root = -fit->GetParameter(0)/fit->GetParameter(1);
+//				else root = (*ih)->GetBinLowEdge(i+2);
 				roots.push_back(root);
-				delete fit;
-				if (roots.size() >= m_nSeekedRoots || (i-istart > 300))  {
+				//delete fit;
+				if (roots.size() >= m_nSeekedRoots)  {
 					if (roots.size() == m_nSeekedRoots) {
 						std::vector<double> seps;
 						for (unsigned int j=0; j<roots.size()-1; j++)
@@ -343,15 +345,19 @@ void SafRawPlots::calculateGains(unsigned int iLow, unsigned int iUp) {
 						m_mtx.lock();
 						h_gainsPerChannel->SetBinContent(iPlot, gain);
 						h_gains->Fill(gain);
+						std::cout<<"Found a gain: "<<gain<<"\t"<<iPlot<<std::endl;
+						gainSet = true;
 						m_mtx.unlock();
 						i+=10;
 					}
-					break;
 				}
 			}
+			if (gainSet) break;
 		}
 		iPlot++;
 	}
+
+	std::cout<<"Gain calculating complete. About 1 min left."<<std::endl;
 }
 
 
