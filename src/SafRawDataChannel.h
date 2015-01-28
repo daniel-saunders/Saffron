@@ -53,11 +53,8 @@ public:
   unsigned int nTriggers() {return m_nTriggers;}
   bool baseLineEstSet() {return m_baseLineEstSet;}
   double baseLineEst() {
-  	if (!m_baseLineEstSet) {
-  		calcBaseLineEst();
-  		m_baseLineEstSet = true;
-  	}
-  	return m_baseLineEst;
+  	if (!m_baseLineEstSet) return -1.0;
+  	else return m_baseLineEst;
   }
   void setBaseLineEst(double b) {m_baseLineEst = b;}
   void addNEntries(unsigned int n) {

@@ -172,26 +172,14 @@ void SafTrigger::scanChannel(SafRawDataChannel * channel)
 		
 	  double tempTriggerValue;
 	  if (m_triggerMethod == 0) tempTriggerValue = triggerValue;
-	  else if (m_triggerMethod == 1)
-	  	tempTriggerValue = signals->at(i) - channel->baseLineEst();
+	  else tempTriggerValue = signals->at(i) - channel->baseLineEst();
 		if (tempTriggerValue > m_triggerValueCuts[m_triggerMethod] && !triggered && channel->baseLineEst() > 5000) {
-			double val;
-			if (m_triggerMethod == 1) {
-				int nAhead = 1;
-				for (unsigned int iAhead=0; iAhead<nAhead; iAhead++) {
-					val += signals->at(i+iAhead);
-					if (i+iAhead > signals->size()) break;
-				}
-				val -= nAhead*channel->baseLineEst();
-			}
-			else val = triggerValue;
 			double time = times->at(i);
 
 			m_mtx.lock();
 			runner()->triggerData()->times()->push_back(time);
 			runner()->triggerData()->channels()->push_back(channel);
-			runner()->triggerData()->values()->push_back(val);
-			runner()->triggerData()->values()->push_back(triggerValue);
+			runner()->triggerData()->values()->push_back(tempTriggerValue);
 			runner()->triggerData()->dipValues()->push_back(triggerDipValue);
 			runner()->triggerData()->peakValues()->push_back(triggerPeakValue);
 			runner()->triggerData()->baseLines()->push_back(triggerBaseLine);

@@ -12,7 +12,7 @@
 
 SafCoincidenceFinder::SafCoincidenceFinder(SafRunner * runner) :
   SafAlgorithm(runner, "SafCoincidenceFinder"),
-  m_timeWindow(10)
+  m_timeWindow(5)
 {
 }
 
@@ -28,13 +28,13 @@ SafCoincidenceFinder::~SafCoincidenceFinder()
 
 void SafCoincidenceFinder::initialize()
 {
+	m_threading = false;
 	h_size = new TH1F("size", "size", 40, -0.5, 39.5);
-	h_duration = new TH1F("duration", "duration", m_timeWindow,+4 -0.5, m_timeWindow+3.5);
+	h_duration = new TH1F("duration", "duration", m_timeWindow+4, -0.5, m_timeWindow+3.5);
 	h_sizeVsDuration = new TH2F("sizeVsDuration", "sizeVsDuration", 40, -0.5, 39.5,
 			m_timeWindow+4, -0.5, m_timeWindow+3.5);
-	h_channelRate = new TH1F("channelRate", "channelRate", runner()->nCnG(), 0, runner()->nCnG());
+	h_channelRate = new TH1F("channelRate", "channelRate", runner()->nCnG(), -0.5, runner()->nCnG()-0.5);
 	TDirectory * instance_direc = runner()->saveFile()->mkdir(name().c_str());
-
 }
 
 
@@ -50,12 +50,14 @@ void SafCoincidenceFinder::threadExecute(unsigned int iGlib, unsigned int iChann
 	for (unsigned int iTime = 0; iTime < triggerTimes->size()-1; iTime++) {
 		unsigned int size = 1;
 		int duration = 0;
+		int coinDuration = 0;
 
 		coinChannels.push_back(channels->at(iTime));
 		for (unsigned int jTime = iTime + 1; jTime < triggerTimes->size(); jTime++) {
 			duration = triggerTimes->at(jTime) - triggerTimes->at(iTime);
 			if (channels->at(iTime) == channels->at(jTime)) continue;
 			if (duration < m_timeWindow)	{
+				coinDuration = duration;
 				size++;
 				coinChannels.push_back(channels->at(jTime));
 			}
@@ -64,13 +66,11 @@ void SafCoincidenceFinder::threadExecute(unsigned int iGlib, unsigned int iChann
 
 		if (size > 1) {
 			h_size->Fill(size);
-			h_duration->Fill(duration);
-			h_sizeVsDuration->Fill(size, duration);
+			h_duration->Fill(coinDuration);
+			h_sizeVsDuration->Fill(size, coinDuration);
 
 			for (unsigned int i=0; i<size; i++) {
-				int ichan = coinChannels[i]->channelID() +
-					runner()->geometry()->nChannels() * coinChannels[i]->glibID();
-				h_channelRate->Fill(ichan);
+				h_channelRate->Fill(coinChannels[i]->plotIndex());
 			}
 		}
 		coinChannels.clear();

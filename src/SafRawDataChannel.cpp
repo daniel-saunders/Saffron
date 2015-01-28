@@ -57,15 +57,13 @@ unsigned int SafRawDataChannel::plotIndex() {
 
 //_____________________________________________________________________________
 
-void SafRawDataChannel::calcBaseLineEst() {
-	int val = channelID() + 100*glibID();
-	std::stringstream ss; ss<<val;
-	std::string name = "temp"+ss.str();
-	TH1F * h = new TH1F(name.c_str(), name.c_str(), 100, 8050, 8250);
-	for (std::vector<double>::iterator i = signals()->begin(); i!=signals()->end(); i++) {
-		h->Fill(*i);
-	}
-	m_baseLineEst = h->GetBinCenter(h->GetMaximumBin());
+void SafRawDataChannel::calcBaseLineEst() { 
+	m_baseLineEst = 0.;
+	for (std::vector<double>::iterator i = signals()->begin(); i!=signals()->end(); i++)
+		m_baseLineEst += (*i);
+	
+	m_baseLineEst /= signals()->size();
+	m_baseLineEstSet = true;
 }
 
 

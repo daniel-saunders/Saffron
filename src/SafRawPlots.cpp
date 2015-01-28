@@ -149,7 +149,7 @@ void SafRawPlots::finalize()
 //	}
 //	else if (m_calculateGains)
 
-	if (m_calculateGains) calculateGains(0, 74);
+	if (m_calculateGains) calculateGains(0, 20);
 
 
 	std::string direcName = name();
@@ -205,8 +205,7 @@ void SafRawPlots::finalize()
 	for (unsigned int i=0; i<runner()->geometry()->nChannels(); i++) {
 		for (unsigned int j=0; j<runner()->geometry()->nGlibs(); j++) {
 			SafRawDataChannel * channel = runner()->rawData()->channel(j, i);
-			if (channel->baseLineEstSet())
-				h_nBaseLineEstVsChannel->SetBinContent(channel->plotIndex(), channel->baseLineEst());
+  		h_nBaseLineEstVsChannel->SetBinContent(channel->plotIndex(), channel->baseLineEst());
 		}
 	}
 

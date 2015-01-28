@@ -19,10 +19,10 @@ SafRunner::SafRunner() :
   m_timeZero(0),
   m_printRate(10),
   m_triggerSkip(0),
-  triggerThreshold(150),
+  triggerThreshold(200),
   m_saveFileName("Saffron-histos.root")
 {
-	m_fileName = "/storage/SOLID/SM1_23Jan2015_0120_run1_scoperun_ov2300.root";
+	m_fileName = "SM1_06Jan2015_1023_run0_scoperun_slowcontrol-small.root";
 	// Default algorithm list.
 	m_algorithms.push_back(new SafEventBuilder(this));
 	m_algorithms.push_back(new SafRawPlots(this, false));
@@ -31,13 +31,13 @@ SafRunner::SafRunner() :
 //	m_algorithms.push_back(new SafTrigger(this));
 //	m_algorithms.push_back(new SafTriggerPlots(this));
 //	m_algorithms.push_back(new SafPeakFitter(this));
-//	m_algorithms.push_back(new SafCoincidenceFinder(this));
+	m_algorithms.push_back(new SafCoincidenceFinder(this));
 
 	// Geometry.
 	m_geometry = new SafGeometry();
 
 	// Options.
-	m_nEvents = 4500;
+	m_nEvents = 1000;
 	m_runMode = 1; // 0 for MC, 1 for real data.
 }
 
@@ -91,15 +91,16 @@ void SafRunner::run()
 		(*ialgo)->parentFinalize();
 	
 	double totAvTime = 0;
-	std::cout<<"\n--------- Algorithm Average Execute Time (us) ---------"<<std::endl;
+	std::cout<<"\n\n--------- Algorithm Average Execute Time (us) ---------"<<std::endl;
 	for (ialgo = m_algorithms.begin(); ialgo != m_algorithms.end(); ialgo++) {
 		std::cout<<(*ialgo)->name()<<"\t\t"<<(*ialgo)->avTime()<<std::endl;
 		totAvTime += (*ialgo)->avTime();
 	}
 
+  std::cout<<"\n"<<std::endl;
 	double scopeEquivRead = m_nEvents*2048*geometry()->nGlibs()*geometry()->nChannels()*8/1000000.;
-	std::cout<<"\nTotal time sample processed (scope mode + skips): \t"<<2048*m_nEvents*16/1000000.<<" (ms)"<<std::endl;
-	std::cout<<"Fraction tree read: \t\t\t\t"<<((SafEventBuilder*)m_algorithms[0])->treePos()/(1.*((SafEventBuilder*)m_algorithms[0])->tree()->GetEntries())<<std::endl;
+	std::cout<<"\Real time scanned (scope mode + skips): \t"<<2048*m_nEvents*16/1000000.<<" (ms)"<<std::endl;
+	if (runMode()==1) std::cout<<"Fraction tree read: \t\t\t\t"<<((SafEventBuilder*)m_algorithms[0])->treePos()/(1.*((SafEventBuilder*)m_algorithms[0])->tree()->GetEntries())<<std::endl;
 	std::cout<<"Total algorithm average (per event): \t\t"<<totAvTime<<" (ms)"<<std::endl;
 	std::cout<<"Total execution time (per event): \t\t"<<totExTime/(1000.*m_nEvents)<<" (ms)"<<std::endl;
 	std::cout<<"Total execution time: \t\t\t\t"<<totExTime/1000000<<" (s)"<<std::endl;
@@ -113,22 +114,27 @@ void SafRunner::eventLoop() {
 	for (unsigned int i=0; i<m_nEvents; i++) {
 		bool eof = false;
   	if (m_event % m_printRate == 0) {
-  		double frac = ((SafEventBuilder*)m_algorithms[0])->treePos()/(1.*((SafEventBuilder*)m_algorithms[0])->tree()->GetEntries());
-  		std::cout<<"Event: "<<m_event<<"\tFraction read: "<<frac<<std::endl;
-  	}
+      if (runMode()==1) {
+    		double frac = ((SafEventBuilder*)m_algorithms[0])->treePos()/(1.*((SafEventBuilder*)m_algorithms[0])->tree()->GetEntries());
+    		std::cout<<"Event: "<<m_event<<"\tFraction read: "<<frac<<std::endl;
+    	}
+      else std::cout<<"Event: "<<m_event<<"\t/\t"<<nEvents()<<std::endl;
+    }
+
 		for (std::vector< SafAlgorithm* >::iterator ialgo = m_algorithms.begin(); 
 			ialgo != m_algorithms.end(); ialgo++) {
 		  (*ialgo)->parentExecute();
-			if ((*ialgo)->eof()) eof = true;
+			if ((*ialgo)->eof()) {
+        std::cout<<"EOF"<<std::endl;
+        eof = true;
+        break;
+      }
 	  }
 
 		rawData()->clear();
 		triggerData()->clear();
 
-		if (eof) {
-	  	std::cout<<"EOF"<<std::endl;
-	  	break;
-	  }
+		if (eof) break;
 	  m_event++;
 	}
 }

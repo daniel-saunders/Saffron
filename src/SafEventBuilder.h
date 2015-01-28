@@ -21,7 +21,6 @@ class SafEventBuilder: public SafAlgorithm
 {
 private:
 	// Members __________________________________________________________________
-	TRandom3 * m_randGen;
 	double m_mean; //MC mode.
 	double m_rms; //MC mode.
 	std::vector<unsigned int> m_treePos;
@@ -37,8 +36,20 @@ private:
 	std::vector< std::vector<int>* > m_waveforms;
 	std::vector<int> * m_spareWaveform;
 	bool m_firstTime;
-	unsigned int m_nFileThreads;
+	unsigned int m_nFileThreads; // Doesn't work, should == 1 always.
+	TH1F * m_allSignals;
 
+
+	// MC stuff.
+	double m_gain;
+	double m_crossTorqueRatio;
+	unsigned int m_peakRate;
+	bool m_uniformPeakRate; //n peaks per event per channel.
+	unsigned int m_halfPeakWidth;
+	double m_singlePAHeight;
+	TH1F * m_MCPAs;
+	double m_periodicNoiseA;
+	double m_periodicNoisePeriod;
 
 
 public:
@@ -48,9 +59,12 @@ public:
 
 	void initialize();
 	void execute();
+	void threadExecute(unsigned int iGlib, unsigned int iLow, unsigned int iUp, int);
 	void finalize();
 
-	void monteCarlo();
+	void monteCarlo(unsigned int iGlib, unsigned int iLow, unsigned int iUp, int iThread);
+	void addPedestal(SafRawDataChannel * channel, TRandom3 * randGen);
+	void addUniformPeaks(SafRawDataChannel * channel, TRandom3 * randGen);
 	void threadFill(SafRawDataChannel * channel, std::vector<int> * waveform);
 	void realData(unsigned int channelIndexUpper);
 	TTree * tree() {return m_trees.back();}
