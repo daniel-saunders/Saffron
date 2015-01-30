@@ -33,6 +33,7 @@ void SafTriggerDataSet::clear()
 	dipValues()->clear();
 	peakValues()->clear();
 	baseLines()->clear();
+	channels()->clear();
 }
 
 

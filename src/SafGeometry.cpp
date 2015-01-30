@@ -11,9 +11,16 @@
 
 SafGeometry::SafGeometry() :
   m_nGlibs(5),
-  m_nChannels(76)
+  m_nChannels(76),
+  m_maskedChannels(500, false)
 {
-	// TODO Auto-generated constructor stub
+	m_maskedChannels[164] = true;
+	m_maskedChannels[155] = true;
+	m_maskedChannels[50] = true;
+	m_maskedChannels[10] = true;
+	m_maskedChannels[11] = true;
+	m_maskedChannels[12] = true;
+	m_maskedChannels[31] = true;
 }
 
 

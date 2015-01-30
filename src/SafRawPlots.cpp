@@ -48,21 +48,21 @@ void SafRawPlots::initialize()
 
 	std::string name = "Signal";
 	if (m_filtered) name += "-Filtered";
-	h_signals = initPerChannelPlots(name.c_str(), name.c_str(), 4500, 7000, 16000);
+	h_signals = initPerChannelPlots(name.c_str(), name.c_str(), 5500, 7000, 18000);
 	name = "SignalDifferential";
 	if (m_filtered) name += "-Filtered";
-	h_signalsDiff = initPerChannelPlots(name.c_str(), name.c_str(), 4500, 7000, 16000);
+	h_signalsDiff = initPerChannelPlots(name.c_str(), name.c_str(), 5500, 7000, 18000);
 	name = "SignalDoubleDifferential";
 	if (m_filtered) name += "-Filtered";
-	h_signalsDoubleDiff = initPerChannelPlots(name.c_str(), name.c_str(), 4500, 7000, 16000);
+	h_signalsDoubleDiff = initPerChannelPlots(name.c_str(), name.c_str(), 5500, 7000, 18000);
 	name = "SignalTripleDifferential";
 	if (m_filtered) name += "-Filtered";
-	h_signalsTripleDiff = initPerChannelPlots(name.c_str(), name.c_str(), 4500, 7000, 16000);
+	h_signalsTripleDiff = initPerChannelPlots(name.c_str(), name.c_str(), 5500, 7000, 18000);
 
 
 	int nChannels = nC*nG;
 	h_allSignals = new TH2F("AllSignalDist", "AllSignalDist", nChannels, -0.5,
-			nChannels-0.5, 4500, 7000., 16000.);
+			nChannels-0.5, 4500, 7000., 18000.);
 	h_signalMeans = new TH1F("SignalMeans", "SignalMeans", nChannels, -0.5, nChannels-0.5);
 	h_signalWidths = new TH1F("SignalWidths", "SignalWidths", nChannels, -0.5, nChannels-0.5);
 	h_nBaseLineEstVsChannel = new TH1F("BaseLineEstimates", "BaseLineEstimates", nChannels, -0.5, nChannels-0.5);
@@ -149,74 +149,76 @@ void SafRawPlots::finalize()
 //	}
 //	else if (m_calculateGains)
 
-	if (m_calculateGains) calculateGains(0, 20);
+	if (m_calculateGains) calculateGains(0, runner()->nCnG());
 
 
-	std::string direcName = name();
-	if (m_filtered) direcName += "-Filtered";
-	for (unsigned int i=0; i<h_firstEventWaveforms->size(); i++) {
-		int iGlib = i/runner()->geometry()->nChannels();
-		std::stringstream ssGlib; ssGlib << iGlib;
-		runner()->saveFile()->cd((direcName + "/FirstWaveforms/Glib" + ssGlib.str()).c_str());
-
-		h_firstEventWaveforms->at(i)->Write();
-	}
-
-	for (unsigned int i=0; i<h_signals->size(); i++) {
-		for (int j=0; j<h_signals->at(i)->GetNbinsX(); j++) {
-			h_allSignals->SetBinContent(i, j, h_signals->at(i)->GetBinContent(j));
-		}
-		int iGlib = i/runner()->geometry()->nChannels();
-		std::stringstream ssGlib; ssGlib << iGlib;
-		runner()->saveFile()->cd((direcName + "/Signals/Glib" + ssGlib.str()).c_str());
-		h_signals->at(i)->Write();
-
-		int fitStatus = h_signals->at(i)->Fit("gaus", "Q");
-		if (fitStatus != 0) continue;
-		h_signalMeans->SetBinContent(i, h_signals->at(i)->GetFunction("gaus")->GetParameter(1));
-		h_signalMeans->SetBinError(i, h_signals->at(i)->GetFunction("gaus")->GetParError(1));
-
-		h_signalWidths->SetBinContent(i, h_signals->at(i)->GetFunction("gaus")->GetParameter(2));
-		h_signalWidths->SetBinError(i, h_signals->at(i)->GetFunction("gaus")->GetParError(2));
-
-		runner()->saveFile()->cd((direcName + "/SignalsDifferentiated/Glib" + ssGlib.str()).c_str());
-		h_signalsDiff->at(i)->Write();
-
-		runner()->saveFile()->cd((direcName + "/SignalsDoubleDifferentiated/Glib" + ssGlib.str()).c_str());
-		h_signalsDoubleDiff->at(i)->Write();
-
-		runner()->saveFile()->cd((direcName + "/SignalsTripleDifferentiated/Glib" + ssGlib.str()).c_str());
-		h_signalsTripleDiff->at(i)->Write();
-	}
-
-	for (int i=0; i<h_avSignalPerEventPerChannel->GetNbinsX(); i++) {
-		for (int j=0; j<h_avSignalPerEventPerChannel->GetNbinsY(); j++) {
-			double av = h_avSignalPerEventPerChannel->GetBinContent(i, j);
-			double rms = h_rmsSignalPerEventPerChannel->GetBinContent(i, j);
-			av /= h_signals->at(i)->GetMean();
-			rms /= h_signals->at(i)->GetMean();
-			h_avSignalPerEventPerChannel->SetBinContent(i, j, av);
-			h_rmsSignalPerEventPerChannel->SetBinContent(i, j, rms);
-			h_avSignalOfEvents->Fill(av);
-			h_avSignalPerChannelOfEvents->Fill(i, av);
-		}
-	}
-
-	for (unsigned int i=0; i<runner()->geometry()->nChannels(); i++) {
-		for (unsigned int j=0; j<runner()->geometry()->nGlibs(); j++) {
-			SafRawDataChannel * channel = runner()->rawData()->channel(j, i);
-  		h_nBaseLineEstVsChannel->SetBinContent(channel->plotIndex(), channel->baseLineEst());
-		}
-	}
-
-	runner()->saveFile()->cd(direcName.c_str());
-	h_allSignals->Write();
-	h_signalMeans->Write();
-	h_signalWidths->Write();
-	h_avSignalPerEventPerChannel->Write();
-	h_rmsSignalPerEventPerChannel->Write();
-	h_avSignalOfEvents->Write();
-	h_avSignalPerChannelOfEvents->Write();
+//	std::string direcName = name();
+//	if (m_filtered) direcName += "-Filtered";
+//	for (unsigned int i=0; i<h_firstEventWaveforms->size(); i++) {
+//		int iGlib = i/runner()->geometry()->nChannels();
+//		std::stringstream ssGlib; ssGlib << iGlib;
+//		runner()->saveFile()->cd((direcName + "/FirstWaveforms/Glib" + ssGlib.str()).c_str());
+//
+//		h_firstEventWaveforms->at(i)->Write();
+//	}
+//
+//	for (unsigned int i=0; i<h_signals->size(); i++) {
+//		for (int j=0; j<h_signals->at(i)->GetNbinsX(); j++) {
+//			h_allSignals->SetBinContent(i, j, h_signals->at(i)->GetBinContent(j));
+//		}
+//		int iGlib = i/runner()->geometry()->nChannels();
+//		std::stringstream ssGlib; ssGlib << iGlib;
+//		runner()->saveFile()->cd((direcName + "/Signals/Glib" + ssGlib.str()).c_str());
+//		h_signals->at(i)->Write();
+//
+//		int fitStatus = h_signals->at(i)->Fit("gaus", "Q");
+//		if (fitStatus != 0) continue;
+//		h_signalMeans->SetBinContent(i, h_signals->at(i)->GetFunction("gaus")->GetParameter(1));
+//		h_signalMeans->SetBinError(i, h_signals->at(i)->GetFunction("gaus")->GetParError(1));
+//
+//		h_signalWidths->SetBinContent(i, h_signals->at(i)->GetFunction("gaus")->GetParameter(2));
+//		h_signalWidths->SetBinError(i, h_signals->at(i)->GetFunction("gaus")->GetParError(2));
+//
+//		runner()->saveFile()->cd((direcName + "/SignalsDifferentiated/Glib" + ssGlib.str()).c_str());
+//		h_signalsDiff->at(i)->Write();
+//
+//		runner()->saveFile()->cd((direcName + "/SignalsDoubleDifferentiated/Glib" + ssGlib.str()).c_str());
+//		h_signalsDoubleDiff->at(i)->Write();
+//
+//		runner()->saveFile()->cd((direcName + "/SignalsTripleDifferentiated/Glib" + ssGlib.str()).c_str());
+//		h_signalsTripleDiff->at(i)->Write();
+//	}
+//
+//	for (int i=0; i<h_avSignalPerEventPerChannel->GetNbinsX(); i++) {
+//		for (int j=0; j<h_avSignalPerEventPerChannel->GetNbinsY(); j++) {
+//			double av = h_avSignalPerEventPerChannel->GetBinContent(i, j);
+//			double rms = h_rmsSignalPerEventPerChannel->GetBinContent(i, j);
+//			av /= h_signals->at(i)->GetMean();
+//			rms /= h_signals->at(i)->GetMean();
+//			h_avSignalPerEventPerChannel->SetBinContent(i, j, av);
+//			h_rmsSignalPerEventPerChannel->SetBinContent(i, j, rms);
+//			h_avSignalOfEvents->Fill(av);
+//			h_avSignalPerChannelOfEvents->Fill(i, av);
+//		}
+//	}
+//
+//	for (unsigned int i=0; i<runner()->geometry()->nChannels(); i++) {
+//		for (unsigned int j=0; j<runner()->geometry()->nGlibs(); j++) {
+//			SafRawDataChannel * channel = runner()->rawData()->channel(j, i);
+//  		h_nBaseLineEstVsChannel->SetBinContent(channel->plotIndex(), channel->baseLineEst());
+//		}
+//	}
+//
+//	runner()->saveFile()->cd(direcName.c_str());
+//	h_allSignals->Write();
+//	TH1D * proj = h_allSignals->ProjectionY();
+//	proj->Write();
+//	h_signalMeans->Write();
+//	h_signalWidths->Write();
+//	h_avSignalPerEventPerChannel->Write();
+//	h_rmsSignalPerEventPerChannel->Write();
+//	h_avSignalOfEvents->Write();
+//	h_avSignalPerChannelOfEvents->Write();
 	h_gains->Write();
 	h_gainsPerChannel->Write();
 	h_nBaseLineEstVsChannel->Write();

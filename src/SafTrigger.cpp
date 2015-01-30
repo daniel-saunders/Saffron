@@ -132,6 +132,17 @@ void SafTrigger::postExecute()
 	(*dipValues) = apply_permutation((*dipValues), p);
 	(*peakValues) = apply_permutation((*peakValues), p);
 	(*baseLines) = apply_permutation((*baseLines), p);
+
+	//exit(0);
+
+	if (m_event == 0) {
+		TH1F * h_triggerSort = new TH1F("triggerSorting", "triggerSorting", triggerTimes->size(), 0, triggerTimes->size());
+		for (unsigned int i=0; i<triggerTimes->size(); i++) {
+			h_triggerSort->SetBinContent(i, triggerTimes->at(i));
+		}
+		h_triggerSort->Write();
+		delete h_triggerSort;
+	}
 }
 
 
@@ -175,6 +186,8 @@ void SafTrigger::scanChannel(SafRawDataChannel * channel)
 	  else tempTriggerValue = signals->at(i) - channel->baseLineEst();
 		if (tempTriggerValue > m_triggerValueCuts[m_triggerMethod] && !triggered && channel->baseLineEst() > 5000) {
 			double time = times->at(i);
+
+			if (i+5<signals->size()) tempTriggerValue = (*std::max_element(signals->begin() + i, signals->begin() + i + 5)) - channel->baseLineEst();
 
 			m_mtx.lock();
 			runner()->triggerData()->times()->push_back(time);

@@ -13,7 +13,7 @@ SafAlgorithm::SafAlgorithm(SafRunner * runner, std::string name) :
   m_eof(false),
   m_nThreadsPerGlib(2),
   m_threading(false),
-  m_forceSingleThread(true)
+  m_forceSingleThread(false)
 {
 	std::mutex m_mtx;
   m_runner = runner;

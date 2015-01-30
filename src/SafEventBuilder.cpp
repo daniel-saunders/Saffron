@@ -37,8 +37,8 @@ void SafEventBuilder::initialize()
 	m_uniformPeakRate = true;
 	m_peakRate = 80;
 	m_crossTorqueRatio = 0.55;
-	m_singlePAHeight = 30;
-	m_gain = 30;
+	m_singlePAHeight = 40;
+	m_gain = 40;
 	m_halfPeakWidth = 3;
 	m_periodicNoiseA = 12;
 	m_periodicNoisePeriod = 8;
@@ -151,10 +151,18 @@ void SafEventBuilder::realData(unsigned int iThread)
 				m_glibs[iThread]-111, m_glibchans[iThread]);
 
 		unsigned int size = m_waveforms[iThread]->size();
-		for (unsigned int i=0; i<size; i++) {
-			channel->signals()->push_back(m_waveforms[iThread]->at(i));
-			m_allSignals->Fill(m_waveforms[iThread]->at(i));
-			channel->times()->push_back(i);
+		if (runner()->geometry()->masked(channel->plotIndex())) {
+			for (unsigned int i=0; i<size; i++) {
+				channel->signals()->push_back(0.0);
+				channel->times()->push_back(i);
+			}
+		}
+		else {
+			for (unsigned int i=0; i<size; i++) {
+				channel->signals()->push_back(m_waveforms[iThread]->at(i));
+				m_allSignals->Fill(m_waveforms[iThread]->at(i));
+				channel->times()->push_back(i);
+			}
 		}
 
 		channel->addNEntries(channel->times()->size());

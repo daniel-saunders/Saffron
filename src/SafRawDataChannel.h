@@ -78,6 +78,8 @@ public:
 	unsigned int nEntriesTotal() {return m_nEntriesTotal;}
 	unsigned int nTriggersTotal() {return m_nTriggersTotal;}
 	unsigned int nTriggerSamplesWritten() {return m_nTriggerSamplesWritten;}
+	unsigned int plane() {return m_glibID*2 + (m_channelID/36);}
+	unsigned int side() {return m_glibID*4 + (m_channelID/16);}
 };
 
 #endif /* SAFRAWDATACHANNEL_H_ */

@@ -33,7 +33,9 @@ void SafTriggerPlots::initialize()
 	unsigned int nG = runner()->geometry()->nGlibs();
 	unsigned int nC = runner()->geometry()->nChannels();
 	
-	h_values = new TH1F("TriggerValues", "TriggerValues", 1000, 0, 1000);
+	h_values = new TH1F("TriggerValues", "TriggerValues", 1000, 0, 10000);
+	h_valuesZoomed = new TH1F("TriggerValuesZoomed", "TriggerValuesZoomed", 1000, 0, 1000);
+	h_triggerIntegral = new TH1F("TriggerIntegral", "TriggerIntegral", 1000, 0, 15000);
 	h_dipValues = new TH1F("DipValues", "DipValues", 500, -1000, 2500);
 	h_peakValues = new TH1F("PeakValues", "PeakValues", 500, -1000, 2500);
 	h_dipVsPeakValues = new TH2F("PeakVsDipValues", "PeakVsDipValues", 500, -1000, 
@@ -91,8 +93,16 @@ void SafTriggerPlots::fill()
 	for (unsigned int i=0; i<data->nTriggers(); i++) {
 		unsigned int plotIndex = data->channels()->at(i)->plotIndex();
 		h_values->Fill(data->values()->at(i));
+		h_valuesZoomed->Fill(data->values()->at(i));
 		h_dipValues->Fill(data->dipValues()->at(i));
 		h_peakValues->Fill(data->peakValues()->at(i));
+		if (i+2 < data->times()->size()) {
+			double integral = data->channels()->at(i)->signals()->at(data->times()->at(i)) +
+					data->channels()->at(i)->signals()->at(data->times()->at(i+1)) +
+					data->channels()->at(i)->signals()->at(data->times()->at(i+2)) -
+					3*data->channels()->at(i)->baseLineEst();
+			h_triggerIntegral->Fill(integral);
+		}
 
 		h_dipVsPeakValues->Fill(data->dipValues()->at(i),
 				data->peakValues()->at(i));
@@ -154,7 +164,8 @@ void SafTriggerPlots::finalize()
 
 	for (unsigned int i=0; i<h_valuesPerChannel->size(); i++){
 		for (unsigned int j=0; j<h_valuesPerChannel->at(i)->GetNbinsX(); j++) {
-			h_valuesVsChannel->SetBinContent(i, j, h_valuesPerChannel->at(i)->GetBinContent(j));
+			h_valuesVsChannel->SetBinContent(i, j,
+					h_valuesPerChannel->at(i)->GetBinContent(j)/runner()->realTimeElapsed());
 		}
 	}
 
@@ -171,6 +182,8 @@ void SafTriggerPlots::finalize()
 	h_dataRates->Write();
 	h_triggerRate->Write();
 	h_nTriggersVsEvents->Write();
+	h_triggerIntegral->Write();
+	h_valuesZoomed->Write();
 }
 
 

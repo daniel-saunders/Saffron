@@ -19,7 +19,7 @@ SafRunner::SafRunner() :
   m_timeZero(0),
   m_printRate(10),
   m_triggerSkip(0),
-  triggerThreshold(200),
+  triggerThreshold(120),
   m_saveFileName("Saffron-histos.root")
 {
 	m_fileName = "SM1_06Jan2015_1023_run0_scoperun_slowcontrol-small.root";
@@ -28,16 +28,16 @@ SafRunner::SafRunner() :
 	m_algorithms.push_back(new SafRawPlots(this, false));
 //  m_algorithms.push_back(new SafFilter(this));
 //  m_algorithms.push_back(new SafRawPlots(this, true));
-//	m_algorithms.push_back(new SafTrigger(this));
-//	m_algorithms.push_back(new SafTriggerPlots(this));
+	m_algorithms.push_back(new SafTrigger(this));
+	m_algorithms.push_back(new SafTriggerPlots(this));
 //	m_algorithms.push_back(new SafPeakFitter(this));
-	m_algorithms.push_back(new SafCoincidenceFinder(this));
+//	m_algorithms.push_back(new SafCoincidenceFinder(this));
 
 	// Geometry.
 	m_geometry = new SafGeometry();
 
 	// Options.
-	m_nEvents = 1000;
+	m_nEvents = 4400;
 	m_runMode = 1; // 0 for MC, 1 for real data.
 }
 
