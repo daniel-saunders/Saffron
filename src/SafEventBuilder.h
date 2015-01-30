@@ -12,6 +12,7 @@
 #include "TRandom3.h"
 #include "TTree.h"
 #include "TFile.h"
+#include "TChain.h"
 
 
 class SafRawDataChannel;
@@ -23,8 +24,8 @@ private:
 	// Members __________________________________________________________________
 	double m_mean; //MC mode.
 	double m_rms; //MC mode.
-	std::vector<unsigned int> m_treePos;
-	std::vector<TTree*> m_trees;
+  unsigned int m_chainPos;
+	TChain * m_chain;
 	std::vector<TFile*> m_files;
 	std::vector<std::string> m_fileNames; // one per thread.
 	std::vector<int> m_glibs;
@@ -38,6 +39,7 @@ private:
 	bool m_firstTime;
 	unsigned int m_nFileThreads; // Doesn't work, should == 1 always.
 	TH1F * m_allSignals;
+	unsigned int m_currentFileID;
 
 
 	// MC stuff.
@@ -56,6 +58,7 @@ public:
 	// Methods __________________________________________________________________
 	SafEventBuilder(SafRunner * runner);
 	virtual ~SafEventBuilder();
+	void setupChain();
 
 	void initialize();
 	void execute();
@@ -67,8 +70,8 @@ public:
 	void addUniformPeaks(SafRawDataChannel * channel, TRandom3 * randGen);
 	void threadFill(SafRawDataChannel * channel, std::vector<int> * waveform);
 	void realData(unsigned int channelIndexUpper);
-	TTree * tree() {return m_trees.back();}
-	unsigned int treePos() {return m_treePos.back();}
+	TChain * chain() {return m_chain;}
+	unsigned int treePos() {return m_chainPos;}
 };
 
 #endif /* SAFEVENTBUILDER_H_ */

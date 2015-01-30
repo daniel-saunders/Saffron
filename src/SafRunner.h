@@ -24,6 +24,7 @@
 #include "SafPeakFitter.h"
 #include "SafFilter.h"
 #include "SafCoincidenceFinder.h"
+#include "dirent.h"
 
 
 // Forward declarations.
@@ -53,8 +54,9 @@ private:
 	unsigned int m_printRate;
 	unsigned int m_threadsPerGlib;
 	unsigned int m_triggerSkip;
-	std::string m_fileName;
+	std::vector<std::string> m_rawDataFileNames;
 	std::string m_saveFileName;
+	bool m_fileNamesPassed;
 
 
 public:
@@ -66,12 +68,12 @@ public:
 	void safPrint(std::string output, int printLevel);
 	void eventLoop();
 	double realTimeElapsed() {return 1.*(m_event-m_triggerSkip)*2048*16e-9;}
+	void evalArg(std::string);
 
 
 	// Setters and getters ______________________________________________________
-	void setFileName(std::string s) {m_fileName = s;}
 	void setSaveFileName(std::string s) {m_saveFileName = s;}
-	std::string fileName() {return m_fileName;}
+	std::vector<std::string> rawDataFileNames() {return m_rawDataFileNames;}
 	unsigned int printThreshold() {return m_printThreshold;}
 	void setPrintThreshold(unsigned int printThreshold) {
 		m_printThreshold = printThreshold;}

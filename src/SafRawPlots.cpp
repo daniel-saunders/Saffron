@@ -134,61 +134,45 @@ void SafRawPlots::execute()
 
 void SafRawPlots::finalize()
 {
-//	if (m_calculateGains && m_threading && !m_forceSingleThread) {
-//		unsigned int step = h_signals->size()/m_nFinalizeThreads;
-//		unsigned int iUp = step;
-//		std::vector<std::thread> threads;
-//		while (iUp < h_signals->size()) {
-//			std::cout<<"Starting thread, with values: "<<iUp-step<<"\t"<<iUp<<std::endl;
-//			threads.push_back(std::thread(&SafRawPlots::calculateGains, this, iUp-step, iUp));
-//			iUp += step;
-//		}
-//		for (std::vector<std::thread>::iterator i = threads.begin();
-//			i != threads.end(); i++)
-//			(*i).join();
-//	}
-//	else if (m_calculateGains)
-
 	if (m_calculateGains) calculateGains(0, runner()->nCnG());
+	std::cout<<name()<<" - Saving plots..."<<std::endl;
+	std::string direcName = name();
+	if (m_filtered) direcName += "-Filtered";
+	for (unsigned int i=0; i<h_firstEventWaveforms->size(); i++) {
+		int iGlib = i/runner()->geometry()->nChannels();
+		std::stringstream ssGlib; ssGlib << iGlib;
+		runner()->saveFile()->cd((direcName + "/FirstWaveforms/Glib" + ssGlib.str()).c_str());
 
+		h_firstEventWaveforms->at(i)->Write();
+	}
 
-//	std::string direcName = name();
-//	if (m_filtered) direcName += "-Filtered";
-//	for (unsigned int i=0; i<h_firstEventWaveforms->size(); i++) {
-//		int iGlib = i/runner()->geometry()->nChannels();
-//		std::stringstream ssGlib; ssGlib << iGlib;
-//		runner()->saveFile()->cd((direcName + "/FirstWaveforms/Glib" + ssGlib.str()).c_str());
-//
-//		h_firstEventWaveforms->at(i)->Write();
-//	}
-//
-//	for (unsigned int i=0; i<h_signals->size(); i++) {
-//		for (int j=0; j<h_signals->at(i)->GetNbinsX(); j++) {
-//			h_allSignals->SetBinContent(i, j, h_signals->at(i)->GetBinContent(j));
-//		}
-//		int iGlib = i/runner()->geometry()->nChannels();
-//		std::stringstream ssGlib; ssGlib << iGlib;
-//		runner()->saveFile()->cd((direcName + "/Signals/Glib" + ssGlib.str()).c_str());
-//		h_signals->at(i)->Write();
-//
-//		int fitStatus = h_signals->at(i)->Fit("gaus", "Q");
-//		if (fitStatus != 0) continue;
-//		h_signalMeans->SetBinContent(i, h_signals->at(i)->GetFunction("gaus")->GetParameter(1));
-//		h_signalMeans->SetBinError(i, h_signals->at(i)->GetFunction("gaus")->GetParError(1));
-//
-//		h_signalWidths->SetBinContent(i, h_signals->at(i)->GetFunction("gaus")->GetParameter(2));
-//		h_signalWidths->SetBinError(i, h_signals->at(i)->GetFunction("gaus")->GetParError(2));
-//
+	for (unsigned int i=0; i<h_signals->size(); i++) {
+		for (int j=0; j<h_signals->at(i)->GetNbinsX(); j++)
+			h_allSignals->SetBinContent(i, j, h_signals->at(i)->GetBinContent(j));
+
+		int iGlib = i/runner()->geometry()->nChannels();
+		std::stringstream ssGlib; ssGlib << iGlib;
+		runner()->saveFile()->cd((direcName + "/Signals/Glib" + ssGlib.str()).c_str());
+		h_signals->at(i)->Write();
+
+		int fitStatus = h_signals->at(i)->Fit("gaus", "Q");
+		if (fitStatus != 0) continue;
+		h_signalMeans->SetBinContent(i, h_signals->at(i)->GetFunction("gaus")->GetParameter(1));
+		h_signalMeans->SetBinError(i, h_signals->at(i)->GetFunction("gaus")->GetParError(1));
+
+		h_signalWidths->SetBinContent(i, h_signals->at(i)->GetFunction("gaus")->GetParameter(2));
+		h_signalWidths->SetBinError(i, h_signals->at(i)->GetFunction("gaus")->GetParError(2));
+
 //		runner()->saveFile()->cd((direcName + "/SignalsDifferentiated/Glib" + ssGlib.str()).c_str());
 //		h_signalsDiff->at(i)->Write();
 //
-//		runner()->saveFile()->cd((direcName + "/SignalsDoubleDifferentiated/Glib" + ssGlib.str()).c_str());
-//		h_signalsDoubleDiff->at(i)->Write();
+		runner()->saveFile()->cd((direcName + "/SignalsDoubleDifferentiated/Glib" + ssGlib.str()).c_str());
+		h_signalsDoubleDiff->at(i)->Write();
 //
 //		runner()->saveFile()->cd((direcName + "/SignalsTripleDifferentiated/Glib" + ssGlib.str()).c_str());
 //		h_signalsTripleDiff->at(i)->Write();
-//	}
-//
+	}
+
 //	for (int i=0; i<h_avSignalPerEventPerChannel->GetNbinsX(); i++) {
 //		for (int j=0; j<h_avSignalPerEventPerChannel->GetNbinsY(); j++) {
 //			double av = h_avSignalPerEventPerChannel->GetBinContent(i, j);
@@ -201,30 +185,31 @@ void SafRawPlots::finalize()
 //			h_avSignalPerChannelOfEvents->Fill(i, av);
 //		}
 //	}
-//
-//	for (unsigned int i=0; i<runner()->geometry()->nChannels(); i++) {
-//		for (unsigned int j=0; j<runner()->geometry()->nGlibs(); j++) {
-//			SafRawDataChannel * channel = runner()->rawData()->channel(j, i);
-//  		h_nBaseLineEstVsChannel->SetBinContent(channel->plotIndex(), channel->baseLineEst());
-//		}
-//	}
-//
-//	runner()->saveFile()->cd(direcName.c_str());
-//	h_allSignals->Write();
-//	TH1D * proj = h_allSignals->ProjectionY();
-//	proj->Write();
-//	h_signalMeans->Write();
-//	h_signalWidths->Write();
-//	h_avSignalPerEventPerChannel->Write();
-//	h_rmsSignalPerEventPerChannel->Write();
-//	h_avSignalOfEvents->Write();
-//	h_avSignalPerChannelOfEvents->Write();
+
+	for (unsigned int i=0; i<runner()->geometry()->nChannels(); i++) {
+		for (unsigned int j=0; j<runner()->geometry()->nGlibs(); j++) {
+			SafRawDataChannel * channel = runner()->rawData()->channel(j, i);
+  		h_nBaseLineEstVsChannel->SetBinContent(channel->plotIndex(), channel->baseLineEst());
+		}
+	}
+
+	runner()->saveFile()->cd(direcName.c_str());
+	h_allSignals->Write();
+	TH1D * proj = h_allSignals->ProjectionY();
+	proj->Write();
+	h_signalMeans->Write();
+	h_signalWidths->Write();
+	h_avSignalPerEventPerChannel->Write();
+	h_rmsSignalPerEventPerChannel->Write();
+	h_avSignalOfEvents->Write();
+	h_avSignalPerChannelOfEvents->Write();
 	h_gains->Write();
 	h_gainsPerChannel->Write();
 	h_nBaseLineEstVsChannel->Write();
+	std::cout<<name()<<" - Done."<<std::endl;
 
 	runner()->saveFile()->cd();
-	std::cout<<"REF: "<<h_signals->at(0)->GetMean()<<std::endl;
+	std::cout<<"Useful Arbitrary REF: "<<h_signals->at(0)->GetMean()<<std::endl;
 }
 
 
@@ -240,7 +225,7 @@ void SafRawPlots::calculateGains(unsigned int iLow, unsigned int iUp) {
 
 		if (m_smoothing) smooth(*ih, iPlot);
 		int istart = h_signals->at(iPlot)->GetMaximumBin();
-	  int iend = istart + 200;
+	  int iend = istart + 130;
 		for (int i=istart; i<iend; i++) {
 			double rangeLow = (*ih)->GetBinCenter(i);
 			double rangeHigh = (*ih)->GetBinCenter(i+m_diffBinRange);
@@ -264,7 +249,7 @@ void SafRawPlots::calculateGains(unsigned int iLow, unsigned int iUp) {
 	for (ih = (h_signalsDiff->begin()+iLow); ih!=(h_signalsDiff->begin()+iUp); ih++) {
 		if (iPlot % 10 == 0) std::cout<<"Progress: "<<iPlot+iUp<<"\t/"<<iUp*4<<std::endl;
 		int istart = h_signals->at(iPlot)->GetMaximumBin();
-	  int iend = istart + 200;
+	  int iend = istart + 130;
 		for (int i=istart; i<iend; i++) {
 			double rangeLow = (*ih)->GetBinCenter(i);
 			double rangeHigh = (*ih)->GetBinCenter(i+m_diffBinRange);
@@ -288,7 +273,7 @@ void SafRawPlots::calculateGains(unsigned int iLow, unsigned int iUp) {
 	for (ih = (h_signalsDoubleDiff->begin()+iLow); ih!=(h_signalsDoubleDiff->begin()+iUp); ih++) {
 		if (iPlot % 10 == 0) std::cout<<"Progress: "<<iPlot + 2*iUp<<"\t/"<<iUp*4<<std::endl;
 		int istart = h_signals->at(iPlot)->GetMaximumBin();
-	  int iend = istart + 200;
+	  int iend = istart + 130;
 		for (int i=istart; i<iend; i++) {
 			double rangeLow = (*ih)->GetBinCenter(i);
 			double rangeHigh = (*ih)->GetBinCenter(i+m_diffBinRange);
@@ -314,24 +299,14 @@ void SafRawPlots::calculateGains(unsigned int iLow, unsigned int iUp) {
 		if (iPlot % 10 == 0) std::cout<<"Progress 4: "<<iPlot + 3*iUp<<"\t/"<<iUp*4<<std::endl;
 		std::vector<double> roots;
 		int istart = h_signals->at(iPlot)->GetMaximumBin();
-	  int iend = istart + 500;
+	  int iend = istart + 200;
 		for (int i=istart; i<iend; i++) {
 			if ((*ih)->GetBinContent(i) < 0 &&
 					(*ih)->GetBinContent(i+1) < 0 &&
 					(*ih)->GetBinContent(i+2) > 0 &&
 					(*ih)->GetBinContent(i+3) > 0) {
-//				std::stringstream ss;
-//				ss<<i;
-//				std::string name = "Fit" + ss.str();
-//				m_mtx.lock();
-//				TF1 * fit = new TF1(name.c_str(), "pol1", (*ih)->GetBinCenter(i), (*ih)->GetBinCenter(i+4));
-//				int fitStatus = (*ih)->Fit(name.c_str(), "RQ");
-//				m_mtx.unlock();
 				double root = (*ih)->GetBinLowEdge(i+2);
-//				if (fitStatus == 0) root = -fit->GetParameter(0)/fit->GetParameter(1);
-//				else root = (*ih)->GetBinLowEdge(i+2);
 				roots.push_back(root);
-				//delete fit;
 				if (roots.size() >= m_nSeekedRoots)  {
 					if (roots.size() == m_nSeekedRoots) {
 						std::vector<double> seps;
@@ -346,7 +321,6 @@ void SafRawPlots::calculateGains(unsigned int iLow, unsigned int iUp) {
 						m_mtx.lock();
 						h_gainsPerChannel->SetBinContent(iPlot, gain);
 						h_gains->Fill(gain);
-						std::cout<<"Found a gain: "<<gain<<"\t"<<iPlot<<std::endl;
 						gainSet = true;
 						m_mtx.unlock();
 						i+=10;
@@ -358,7 +332,7 @@ void SafRawPlots::calculateGains(unsigned int iLow, unsigned int iUp) {
 		iPlot++;
 	}
 
-	std::cout<<"Gain calculating complete. About 1 min left."<<std::endl;
+	std::cout<<"Gain calculating complete. Less than 1 min left."<<std::endl;
 }
 
 

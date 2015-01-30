@@ -11,7 +11,9 @@
 
 SafEventBuilder::SafEventBuilder(SafRunner * runner) :
   SafAlgorithm(runner, "SafEventBuilder"),
-  m_nFileThreads(1)
+  m_nFileThreads(1),
+  m_currentFileID(0),
+  m_chainPos(0)
 {
   m_mean = 8000;
   m_rms = 7;
@@ -32,8 +34,12 @@ SafEventBuilder::~SafEventBuilder()
 void SafEventBuilder::initialize()
 {
 	m_threading = true;
+	if (runner()->runMode() == 1) {
+		m_chain = new TChain("waveforms");
+		m_threading = false;
+	}
 
-	if (runner()->runMode() == 1) m_threading = false;
+	// MC Settings.
 	m_uniformPeakRate = true;
 	m_peakRate = 80;
 	m_crossTorqueRatio = 0.55;
@@ -43,42 +49,47 @@ void SafEventBuilder::initialize()
 	m_periodicNoiseA = 12;
 	m_periodicNoisePeriod = 8;
 
+	// Tree stuff.
+	m_waveforms.push_back(new std::vector<int>);
+	m_glibs.push_back(0);
+	m_glibchans.push_back(0);
+	m_triggers.push_back(0);
+	m_layers.push_back(0);
+	m_chanxs.push_back(0);
+	m_chanys.push_back(0);
 
-	m_fileNames.push_back(runner()->fileName());
-	if (runner()->runMode() == 1) {
-		for (unsigned int i=0; i<m_nFileThreads; i++) {
-			std::cout<<"Reading file:\t"<<m_fileNames[i]<<std::endl;
-			m_files.push_back(new TFile(m_fileNames[i].c_str(), "READ"));
-			m_trees.push_back((TTree*)m_files.back()->Get("waveforms"));
-
-
-			m_waveforms.push_back(new std::vector<int>);
-			m_glibs.push_back(0);
-			m_glibchans.push_back(0);
-			m_triggers.push_back(0);
-			m_layers.push_back(0);
-			m_chanxs.push_back(0);
-			m_chanys.push_back(0);
-			m_treePos.push_back(i);
-
-			m_trees.back()->SetBranchAddress("glib",&(m_glibs.back()));
-			m_trees.back()->SetBranchAddress("glibchan",&(m_glibchans.back()));
-			m_trees.back()->SetBranchAddress("trigger",&(m_triggers.back()));
-			m_trees.back()->SetBranchAddress("layer",&(m_layers.back()));
-			m_trees.back()->SetBranchAddress("chanx",&(m_chanxs.back()));
-			m_trees.back()->SetBranchAddress("chany",&(m_chanys.back()));
-			m_trees.back()->SetBranchAddress("waveform",&(m_waveforms.back()));
-			m_trees.back()->GetEvent(0);
-		}
-		m_spareWaveform = new std::vector<int>;
+	if (runner()->rawDataFileNames().size() == 0) {
+		std::cout<<"No files given!"<<std::endl;
+		exit(0);
 	}
 
-	else {
-		m_MCPAs = new TH1F("MCPAs", "MCPAs", 200, -5.5, 19.5);
-	}
+	m_fileNames = runner()->rawDataFileNames();
+	if (runner()->runMode() == 1) setupChain();
+
+	else 	m_MCPAs = new TH1F("MCPAs", "MCPAs", 200, -5.5, 19.5);
 	m_allSignals = new TH1F("allSignals", "allSignals", 4500, 7000, 16000);
 
 	runner()->saveFile()->cd();
+}
+
+
+//_____________________________________________________________________________
+
+void SafEventBuilder::setupChain() {
+	for (unsigned int i=0; i<m_fileNames.size(); i++) {
+		std::cout<<"Reading file:\t"<<m_fileNames[i]<<std::endl;
+		m_chain->Add(m_fileNames[i].c_str());
+	}
+	m_chain->Print();
+
+	m_chain->SetBranchAddress("glib",&(m_glibs.back()));
+	m_chain->SetBranchAddress("glibchan",&(m_glibchans.back()));
+	m_chain->SetBranchAddress("trigger",&(m_triggers.back()));
+	m_chain->SetBranchAddress("layer",&(m_layers.back()));
+	m_chain->SetBranchAddress("chanx",&(m_chanxs.back()));
+	m_chain->SetBranchAddress("chany",&(m_chanys.back()));
+	m_chain->SetBranchAddress("waveform",&(m_waveforms.back()));
+	m_chain->GetEntry(0);
 }
 
 
@@ -124,29 +135,25 @@ void SafEventBuilder::finalize()
 void SafEventBuilder::realData(unsigned int iThread)
 {
 	int skip = runner()->triggerSkip();
-	if (m_firstTime) {
-		for (unsigned int i=0; i<m_nFileThreads; i++) {
-			m_trees[i]->GetEntry(m_treePos[i]);
-		}
-		m_firstTime = false;
-	}
 
-	// Read tree.
+
+	// Skipping events (per file in chain) - NOT TESTED.
 	while (m_triggers[iThread] < skip) {
 		if (m_triggers[iThread] % 10 == 0 && m_glibchans[iThread] == 0 && m_glibs[iThread] == 111) {
 			m_mtx.lock();
 			std::cout<<"Trigger, skip trigger, thread: "<< m_triggers[iThread]<<"\t"<<skip<<"\t"<<iThread<<std::endl;
 			m_mtx.unlock();
 		}
-		m_trees[iThread]->GetEntry(m_treePos[iThread]);
-		m_treePos[iThread]+=m_nFileThreads;
+		m_chain->GetEntry(m_chainPos);
+		m_chainPos+=1;
 	}
 
 
-	int limit = (int)runner()->event() + skip;
-	while (m_triggers[iThread] <= limit) {
-		m_trees[iThread]->GetEntry(m_treePos[iThread]);
-		m_treePos[iThread]+=m_nFileThreads;
+	// Reading.
+	unsigned int trigger = m_triggers[iThread];
+	while (m_triggers[iThread] == trigger) {
+		m_chain->GetEntry(m_chainPos);
+		m_chainPos++;
 		SafRawDataChannel * channel = runner()->rawData()->channel(
 				m_glibs[iThread]-111, m_glibchans[iThread]);
 
@@ -167,7 +174,7 @@ void SafEventBuilder::realData(unsigned int iThread)
 
 		channel->addNEntries(channel->times()->size());
 		if (m_event == 0) channel->calcBaseLineEst();
-		if (m_treePos[iThread] >= m_trees[iThread]->GetEntries()) {
+		if (m_chainPos >= m_chain->GetEntries()) {
 			m_eof = true;
 			break;
 		}
