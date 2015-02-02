@@ -24,7 +24,7 @@ SafRunner::SafRunner() :
   m_fileNamesPassed(false)
 {
 	// Default file name (removed if arguments passed in).
-	m_rawDataFileNames.push_back("SM1_06Jan2015_1023_run0_scoperun_slowcontrol-small.root");
+	m_rawDataFileNames.push_back("/storage/SOLID/SM1_06Jan2015_1023_run0_scoperun_slowcontrol-small.root");
 	// Default algorithm list.
 	m_algorithms.push_back(new SafEventBuilder(this));
 	m_algorithms.push_back(new SafRawPlots(this, false));

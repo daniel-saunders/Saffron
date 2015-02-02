@@ -24,7 +24,9 @@ private:
 	int m_timeWindow;
 	TH2F * h_sizeVsDuration;
 	TH1F * h_channelRate;
+	TH1F * h_triggerValuesAboveSize;
 	TH2F * h_triggerValueVsChannel;
+	
 
 public:
   // Methods __________________________________________________________________

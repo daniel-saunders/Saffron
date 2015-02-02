@@ -37,6 +37,7 @@ void SafCoincidenceFinder::initialize()
 	TDirectory * instance_direc = runner()->saveFile()->mkdir(name().c_str());
 	h_triggerValueVsChannel = new TH2F("triggerValueVsChannel", "triggerValueVsChannel",
 			runner()->nCnG(), -0.5, runner()->nCnG()-0.5, 1000, 0, 10000);
+	h_triggerValuesAboveSize = new TH1F("triggerValuesAboveSize", "triggerValuesAboveSize",1000,0,10000);
 }
 
 
@@ -49,6 +50,9 @@ void SafCoincidenceFinder::threadExecute(unsigned int iGlib, unsigned int iChann
 	std::vector<SafRawDataChannel*> * channels = runner()->triggerData()->channels();
 	std::vector<SafRawDataChannel*> coinChannels;
 	std::vector<double> coinTriggers;
+	
+	std::vector<SafRawDataChannel*> coinChanAboveSize;
+  std::vector<double> coinTriggerValueAboveSize;
 
 	if (triggerTimes->size() < 3) return;
 
@@ -90,8 +94,20 @@ void SafCoincidenceFinder::threadExecute(unsigned int iGlib, unsigned int iChann
 			}
 			iTime += size;
 		}
+	  
+	  if (size > 10) {
+	    coinChanAboveSize.push_back(channels->at(iTime));
+	    coinTriggerValueAboveSize.push_back(runner()->triggerData()->values()->at(iTime));
+
+	    h_triggerValuesAboveSize->Fill(runner()->triggerData()->values()->at(iTime));
+
+    }
+    
 		coinChannels.clear();
 		coinTriggers.clear();
+		coinChanAboveSize.clear();
+	  coinTriggerValueAboveSize.clear();
+	
 	}
 }
 
@@ -117,6 +133,7 @@ void SafCoincidenceFinder::finalize()
 	h_sizeVsDuration->Write();
 	h_duration->Write();
 	h_channelRate->Write();
+	h_triggerValuesAboveSize->Write();
 	h_triggerValueVsChannel->Write();
 	for (unsigned int i=0; i<h_channelRate->GetNbinsX(); i++)
 		h_channelRate->SetBinContent(i, h_channelRate->GetBinContent(i)/runner()->realTimeElapsed());
