@@ -25,12 +25,11 @@ class SafTriggerDataSet : SafDataSet
 {
 private:
 	// NOT SORTED CORRECTLY.
-	std::vector<int> m_times;
+	std::vector<long long int> m_times;
 	std::vector<SafRawDataChannel*> m_channels;
 	std::vector<double> m_values;
-	std::vector<double> m_dipValues;
-	std::vector<double> m_peakValues;
-	std::vector<double> m_baseLines;
+	std::vector<double> m_integrals;
+
 
 public:
 	// Methods __________________________________________________________________
@@ -41,12 +40,10 @@ public:
 	unsigned int nTriggers() {return m_times.size();}
 
 	// Setters and getters ______________________________________________________
-	std::vector<int> * times() {return &m_times;}
+	std::vector<long long int> * times() {return &m_times;}
 	std::vector<SafRawDataChannel*> * channels() {return &m_channels;}
 	std::vector<double> * values() {return &m_values;}
-	std::vector<double> * dipValues() {return &m_dipValues;}
-	std::vector<double> * peakValues() {return &m_peakValues;}
-	std::vector<double> * baseLines() {return &m_baseLines;}
+	std::vector<double> * integrals() {return &m_integrals;}
 };
 
 #endif /* SAFTRIGGERDATASET_H_ */

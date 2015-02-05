@@ -49,7 +49,7 @@ public:
 	void scanChannel(SafRawDataChannel * channel);
 	void scanGlib(unsigned int iGlib);
 	void evalTimeWindow(std::vector<double> * signals,
-		std::vector<int> * times, unsigned int i, double * triggerValue, 
+		std::vector<long long int> * times, unsigned int i, double * triggerValue,
 		double * triggerDipValue, double * triggerPeakValue, double * triggerBaseLine, 
 		bool * firstTimeEval, double * cacheA, double * cacheB, double * cacheC);
 	void setTriggerValueCut(unsigned int iMethod, double x) {

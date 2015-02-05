@@ -39,6 +39,7 @@ void SafRawDataChannel::clear()
 {
 	times()->clear();
 	signals()->clear();
+	triggerIDs()->clear();
 
 	times()->reserve(runner()->eventTimeWindow());
 	signals()->reserve(runner()->eventTimeWindow());

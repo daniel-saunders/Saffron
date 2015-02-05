@@ -35,16 +35,22 @@ void SafTriggerPlots::initialize()
 	
 	h_values = new TH1F("TriggerValues", "TriggerValues", 1000, 0, 10000);
 	h_valuesZoomed = new TH1F("TriggerValuesZoomed", "TriggerValuesZoomed", 1000, 0, 1000);
-	h_triggerIntegral = new TH1F("TriggerIntegral", "TriggerIntegral", 1000, 0, 15000);
-	h_dipValues = new TH1F("DipValues", "DipValues", 500, -1000, 2500);
-	h_peakValues = new TH1F("PeakValues", "PeakValues", 500, -1000, 2500);
-	h_dipVsPeakValues = new TH2F("PeakVsDipValues", "PeakVsDipValues", 500, -1000, 
-			2500, 500, -1000, 2500);
-	h_dipVsValues = new TH2F("DipVsTriggerValues", "DipVsTriggerValues", 500, -1000,
-			2500, 500, -1000, 2500);
-	h_peakVsValues = new TH2F("PeakVsTriggerValues", "PeakVsTriggerValues", 500, -1000,
-			2500, 500, -1000, 2500);
+	h_integrals = new TH1F("TriggerIntegral", "TriggerIntegral", 1000, 0, 3000);
+	h_integralsVsValues = new TH2F("TriggerIntegralVsValue", "TriggerIntegralVsValue",
+			1000, 0, 1000, 1000, 0, 3000);
 	
+	h_integralsVsValues0to38 = new TH2F("TriggerIntegralVsValue0to38", "TriggerIntegralVsValue0to38",
+			1000, 0, 1000, 1000, 0, 3000);
+
+	h_integralsVsValues38to76 = new TH2F("TriggerIntegralVsValue38to76", "TriggerIntegralVsValue38to76",
+			1000, 0, 1000, 1000, 0, 3000);
+
+	h_integralsVsValuesOdd = new TH2F("TriggerIntegralVsValueOdd", "TriggerIntegralVsValueOdd",
+			1000, 0, 1000, 1000, 0, 3000);
+
+	h_integralsVsValuesEven = new TH2F("TriggerIntegralVsValueEven", "TriggerIntegralVsValueEven",
+			1000, 0, 1000, 1000, 0, 3000);
+
   h_firstEventPeaks = initPerChannelPlots("FirstEventPeaks", "FirstEventPeaks", 
 		runner()->eventTimeWindow(), 0.0, runner()->eventTimeWindow());
 	h_valuesPerChannel = initPerChannelPlots("TriggerValues", "TriggerValues", 500, 100, 10000);
@@ -52,8 +58,12 @@ void SafTriggerPlots::initialize()
 	h_nTriggers = new TH1F("AverageTriggerRate", "AverageTriggerRate", nC*nG, 
 			0, nC*nG);
 
-	int nChannels =  nC*nG; 
-	h_valuesVsChannel = new TH2F("AllTriggerDist", "AllTriggerDist", nChannels, -0.5, nChannels-0.5, 500, 100, 2500);
+	int nChannels = nC*nG;
+	h_valuesVsChannel = new TH2F("AllTriggerDist", "AllTriggerDist", nChannels,
+			-0.5, nChannels-0.5, 500, 100, 2500);
+
+	h_integralsVsChannel = new TH2F("TriggerIntVsChannel", "TriggerIntVsChannel", nChannels,
+		-0.5, nChannels-0.5, 1000, 0, 3000);
 
 
 	// Root file directories.
@@ -94,25 +104,27 @@ void SafTriggerPlots::fill()
 		unsigned int plotIndex = data->channels()->at(i)->plotIndex();
 		h_values->Fill(data->values()->at(i));
 		h_valuesZoomed->Fill(data->values()->at(i));
-		h_dipValues->Fill(data->dipValues()->at(i));
-		h_peakValues->Fill(data->peakValues()->at(i));
-		if (i+2 < data->times()->size()) {
-			double integral = data->channels()->at(i)->signals()->at(data->times()->at(i)) +
-					data->channels()->at(i)->signals()->at(data->times()->at(i+1)) +
-					data->channels()->at(i)->signals()->at(data->times()->at(i+2)) -
-					3*data->channels()->at(i)->baseLineEst();
-			h_triggerIntegral->Fill(integral);
-		}
+		h_integrals->Fill(data->integrals()->at(i));
+		h_integralsVsValues->Fill(data->values()->at(i),
+				data->integrals()->at(i));
 
-		h_dipVsPeakValues->Fill(data->dipValues()->at(i),
-				data->peakValues()->at(i));
-		h_dipVsValues->Fill(data->dipValues()->at(i),
-				data->values()->at(i));
-		h_peakVsValues->Fill(data->peakValues()->at(i),
-				data->values()->at(i));
+		if (data->channels()->at(i)->channelID() < 38)
+			h_integralsVsValues0to38->Fill(data->values()->at(i),
+				data->integrals()->at(i));
+		else
+			h_integralsVsValues38to76->Fill(data->values()->at(i),
+				data->integrals()->at(i));
+
+		if (data->channels()->at(i)->channelID() % 2 == 0)
+			h_integralsVsValuesEven->Fill(data->values()->at(i),
+				data->integrals()->at(i));
+		else
+			h_integralsVsValuesOdd->Fill(data->values()->at(i),
+				data->integrals()->at(i));
 
 		h_valuesPerChannel->at(plotIndex)->Fill(data->values()->at(i));
 		h_valuesVsChannel->Fill(plotIndex, data->values()->at(i));
+		h_integralsVsChannel->Fill(plotIndex, data->integrals()->at(i));
 		if (runner()->event() == 0)
 			h_firstEventPeaks->at(plotIndex)->Fill(data->times()->at(i), data->values()->at(i));
 	}
@@ -171,19 +183,20 @@ void SafTriggerPlots::finalize()
 
 	
 	runner()->saveFile()->cd(name().c_str());
-	h_dipValues->Write();
-	h_peakValues->Write();
+	h_integralsVsValues->Write();
 	h_values->Write();
-	h_dipVsPeakValues->Write();
-	h_dipVsValues->Write();
-	h_peakVsValues->Write();
+	h_integralsVsChannel->Write();
 	h_nTriggers->Write();
 	h_valuesVsChannel->Write();
 	h_dataRates->Write();
 	h_triggerRate->Write();
 	h_nTriggersVsEvents->Write();
-	h_triggerIntegral->Write();
+	h_integrals->Write();
 	h_valuesZoomed->Write();
+	h_integralsVsValues0to38->Write();
+	h_integralsVsValues38to76->Write();
+	h_integralsVsValuesOdd->Write();
+	h_integralsVsValuesEven->Write();
 }
 
 

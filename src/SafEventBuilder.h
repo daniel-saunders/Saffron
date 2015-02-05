@@ -34,12 +34,18 @@ private:
 	std::vector<int> m_layers;
 	std::vector<int> m_chanxs;
 	std::vector<int> m_chanys;
-	std::vector< std::vector<int>* > m_waveforms;
+	std::vector<int> m_chanzs;
+	std::vector< std::vector<unsigned short int>* > m_waveforms;
 	std::vector<int> * m_spareWaveform;
 	bool m_firstTime;
 	unsigned int m_nFileThreads; // Doesn't work, should == 1 always.
 	TH1F * m_allSignals;
 	unsigned int m_currentFileID;
+	unsigned int m_triggerEventWindow;
+	long long int m_triggerTime;
+	TH1F * h_nSamplesPerEvent;
+	TH2F * h_nSamplesPerEventPerChannel;
+
 
 
 	// MC stuff.
@@ -69,7 +75,8 @@ public:
 	void addPedestal(SafRawDataChannel * channel, TRandom3 * randGen);
 	void addUniformPeaks(SafRawDataChannel * channel, TRandom3 * randGen);
 	void threadFill(SafRawDataChannel * channel, std::vector<int> * waveform);
-	void realData(unsigned int channelIndexUpper);
+	void scopeData(unsigned int channelIndexUpper);
+	void triggerData();
 	TChain * chain() {return m_chain;}
 	unsigned int treePos() {return m_chainPos;}
 };

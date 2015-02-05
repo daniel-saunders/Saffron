@@ -30,10 +30,8 @@ void SafTriggerDataSet::clear()
 {
   times()->clear();
 	values()->clear();
-	dipValues()->clear();
-	peakValues()->clear();
-	baseLines()->clear();
 	channels()->clear();
+	integrals()->clear();
 }
 
 

@@ -22,9 +22,14 @@ private:
 	TH1F * h_size;
 	TH1F * h_duration;
 	int m_timeWindow;
+	TH1F * h_values;
 	TH2F * h_sizeVsDuration;
 	TH1F * h_channelRate;
-	TH2F * h_triggerValueVsChannel;
+	TH2F * h_valuesVsChannel;
+	TH1F * h_integrals;
+	TH2F * h_integralsVsChannel;
+	double m_upperThreshold;
+	TH2F * h_integralsVsValues;
 
 public:
   // Methods __________________________________________________________________

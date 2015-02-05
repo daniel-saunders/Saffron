@@ -13,7 +13,8 @@ SafEventBuilder::SafEventBuilder(SafRunner * runner) :
   SafAlgorithm(runner, "SafEventBuilder"),
   m_nFileThreads(1),
   m_currentFileID(0),
-  m_chainPos(0)
+  m_chainPos(0),
+  m_triggerEventWindow(100000000) //16ns.
 {
   m_mean = 8000;
   m_rms = 7;
@@ -34,7 +35,7 @@ SafEventBuilder::~SafEventBuilder()
 void SafEventBuilder::initialize()
 {
 	m_threading = true;
-	if (runner()->runMode() == 1) {
+	if (runner()->runMode() == 1 || runner()->runMode() == 2) {
 		m_chain = new TChain("waveforms");
 		m_threading = false;
 	}
@@ -50,13 +51,15 @@ void SafEventBuilder::initialize()
 	m_periodicNoisePeriod = 8;
 
 	// Tree stuff.
-	m_waveforms.push_back(new std::vector<int>);
+	m_waveforms.push_back(new std::vector<unsigned short int>);
 	m_glibs.push_back(0);
 	m_glibchans.push_back(0);
 	m_triggers.push_back(0);
 	m_layers.push_back(0);
 	m_chanxs.push_back(0);
 	m_chanys.push_back(0);
+	m_chanzs.push_back(0);
+	m_triggerTime = 0;
 
 	if (runner()->rawDataFileNames().size() == 0) {
 		std::cout<<"No files given!"<<std::endl;
@@ -64,10 +67,14 @@ void SafEventBuilder::initialize()
 	}
 
 	m_fileNames = runner()->rawDataFileNames();
-	if (runner()->runMode() == 1) setupChain();
+	if (runner()->runMode() == 1 || runner()->runMode() == 2) setupChain();
 
 	else 	m_MCPAs = new TH1F("MCPAs", "MCPAs", 200, -5.5, 19.5);
 	m_allSignals = new TH1F("allSignals", "allSignals", 4500, 7000, 16000);
+	h_nSamplesPerEvent = new TH1F("nSamplesPerEvent", "nSamplesPerEvent",
+			runner()->nEvents(), 0, runner()->nEvents());
+	h_nSamplesPerEventPerChannel = new TH2F("nSamplesPerEventPerChannel", "nSamplesPerEventPerChannel",
+			runner()->nCnG(), 0, runner()->nCnG(), runner()->nEvents(), 0, runner()->nEvents());
 
 	runner()->saveFile()->cd();
 }
@@ -81,11 +88,16 @@ void SafEventBuilder::setupChain() {
 		m_chain->Add(m_fileNames[i].c_str());
 	}
 	m_chain->Print();
-
 	m_chain->SetBranchAddress("glib",&(m_glibs.back()));
 	m_chain->SetBranchAddress("glibchan",&(m_glibchans.back()));
-	m_chain->SetBranchAddress("trigger",&(m_triggers.back()));
-	m_chain->SetBranchAddress("layer",&(m_layers.back()));
+	if (runner()->runMode() == 1) {
+		m_chain->SetBranchAddress("trigger",&(m_triggers.back()));
+		m_chain->SetBranchAddress("layer",&(m_layers.back()));
+	}
+	else {
+		m_chain->SetBranchAddress("triggertime", &m_triggerTime);
+		m_chain->SetBranchAddress("chanz",&(m_chanzs.back()));
+	}
 	m_chain->SetBranchAddress("chanx",&(m_chanxs.back()));
 	m_chain->SetBranchAddress("chany",&(m_chanys.back()));
 	m_chain->SetBranchAddress("waveform",&(m_waveforms.back()));
@@ -104,7 +116,8 @@ void SafEventBuilder::execute()
 
 	else {
 		for (unsigned int i=0; i<m_nFileThreads; i++) {
-			realData(i);
+			if (runner()->runMode() == 1) scopeData(i);
+			else triggerData();
 		}
 	}
 }
@@ -122,17 +135,52 @@ void SafEventBuilder::threadExecute(unsigned int iGlib, unsigned int iLow,
 
 void SafEventBuilder::finalize()
 {
+	runner()->saveFile()->cd(name().c_str());
 	if (runner()->runMode() == 0) {
-		runner()->saveFile()->cd();
+
 		m_MCPAs->Write();
 		m_allSignals->Write();
+	}
+	h_nSamplesPerEvent->Write();
+	h_nSamplesPerEventPerChannel->Write();
+}
+
+
+//_____________________________________________________________________________
+
+void SafEventBuilder::triggerData()
+{
+	// NOT SKIPPING SUPPORTED.
+	while (m_triggerTime < m_event*m_triggerEventWindow) {
+		m_chain->GetEntry(m_chainPos);
+		m_chainPos++;
+		SafRawDataChannel * channel = runner()->rawData()->channel(
+				m_glibs.back()-1, m_glibchans.back());
+		if (runner()->geometry()->masked(channel->plotIndex())) continue;
+
+		unsigned int size = m_waveforms.back()->size();
+		for (unsigned int i=0; i<size; i++) {
+			channel->signals()->push_back(m_waveforms.back()->at(i));
+			m_allSignals->Fill(m_waveforms.back()->at(i));
+			//std::cout<<m_waveforms.back()->at(i)<<std::endl;
+			channel->times()->push_back(m_triggerTime + i);
+		}
+
+		channel->addNEntries(size);
+		channel->calcBaseLineEst();
+		if (m_chainPos >= m_chain->GetEntries()) {
+			m_eof = true;
+			break;
+		}
+		h_nSamplesPerEvent->Fill(m_event, size);
+		h_nSamplesPerEventPerChannel->Fill(channel->plotIndex(), m_event, size);
 	}
 }
 
 
 //_____________________________________________________________________________
 
-void SafEventBuilder::realData(unsigned int iThread)
+void SafEventBuilder::scopeData(unsigned int iThread)
 {
 	int skip = runner()->triggerSkip();
 
@@ -178,6 +226,7 @@ void SafEventBuilder::realData(unsigned int iThread)
 			m_eof = true;
 			break;
 		}
+		h_nSamplesPerEvent->Fill(m_event, size);
 	}
 }
 

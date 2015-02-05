@@ -31,10 +31,6 @@ private:
 	TH1F * h_signalMeans;
 	TH1F * h_signalWidths;
 	bool m_filtered;
-	TH2F * h_avSignalPerEventPerChannel;
-	TH2F * h_rmsSignalPerEventPerChannel;
-	TH1F * h_avSignalOfEvents;
-	TH2F * h_avSignalPerChannelOfEvents;
 	unsigned int m_diffBinRange;
 	unsigned int m_nSeekedRoots;
 	TH1F * h_gainsPerChannel;
@@ -43,6 +39,7 @@ private:
 	unsigned int m_nFinalizeThreads;
 	TH1F * h_nBaseLineEstVsChannel;
 	bool m_smoothing;
+	std::vector<bool> * m_firstEventFilled;
 
 
 public:

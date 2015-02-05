@@ -8,9 +8,9 @@
 #include "SafTrigger.h"
 
 struct Local {
-    Local(std::vector<int> * vec) {this->vec = vec;}
+    Local(std::vector<long long int> * vec) {this->vec = vec;}
     bool operator () (int i, int j) {return (vec->at(i) < vec->at(j));}
-    std::vector<int> * vec;
+    std::vector<long long int> * vec;
 };
 
 template <typename T>
@@ -65,14 +65,18 @@ void SafTrigger::initialize()
 	if (!runner()->triggerData()) new SafTriggerDataSet(runner());
 	m_threading = true;
 
+	double size;
+	if (runner()->runMode() == 1) size = runner()->eventTimeWindow();
+	else size = 300;
+
 	h_triggerValues = initPerChannelPlots("FirstEventTriggerValues", "FirstEventTriggerValues", 
-		runner()->eventTimeWindow(), 0.0, runner()->eventTimeWindow());
+		size, 0.0, size);
 
 	h_triggerOnOff = initPerChannelPlots("FirstEventTriggerOnOff", "FirstEventTriggerOnOff",
-		runner()->eventTimeWindow(), 0.0, runner()->eventTimeWindow());
+		size, 0.0, size);
 
 	h_writingOnOff = initPerChannelPlots("FirstEventWritingOnOff", "FirstEventWritingOnOff",
-		runner()->eventTimeWindow(), 0.0, runner()->eventTimeWindow());
+		size, 0.0, size);
 
 	TDirectory * instance_direc = runner()->saveFile()->mkdir(name().c_str());
 	instance_direc->mkdir("FirstEventTriggerValues");
@@ -117,23 +121,17 @@ void SafTrigger::execute()
 
 void SafTrigger::postExecute()
 {
-	std::vector<int> * triggerTimes = runner()->triggerData()->times();
+	std::vector<long long int> * triggerTimes = runner()->triggerData()->times();
 	std::vector<SafRawDataChannel*> * channels = runner()->triggerData()->channels();
 	std::vector<double> * values = runner()->triggerData()->values();
-	std::vector<double> * dipValues = runner()->triggerData()->dipValues();
-	std::vector<double> * peakValues = runner()->triggerData()->peakValues();
-	std::vector<double> * baseLines = runner()->triggerData()->baseLines();
+	std::vector<double> * integrals = runner()->triggerData()->integrals();
 
 	auto p = sort_permutation(*triggerTimes);
 
 	(*triggerTimes) = apply_permutation((*triggerTimes), p);
 	(*channels) = apply_permutation((*channels), p);
 	(*values) = apply_permutation((*values), p);
-	(*dipValues) = apply_permutation((*dipValues), p);
-	(*peakValues) = apply_permutation((*peakValues), p);
-	(*baseLines) = apply_permutation((*baseLines), p);
-
-	//exit(0);
+	(*integrals) = apply_permutation((*integrals), p);
 
 	if (m_event == 0) {
 		TH1F * h_triggerSort = new TH1F("triggerSorting", "triggerSorting", triggerTimes->size(), 0, triggerTimes->size());
@@ -143,6 +141,9 @@ void SafTrigger::postExecute()
 		h_triggerSort->Write();
 		delete h_triggerSort;
 	}
+
+	for (unsigned int i=0; i<channels->size(); i++)
+		channels->at(i)->triggerIDs()->push_back(i);
 }
 
 
@@ -155,47 +156,47 @@ void SafTrigger::scanChannel(SafRawDataChannel * channel)
 	unsigned int nSinceLastTrigger = 10;
 	bool writing = false;
 	unsigned int nWritten = 0;
-	std::vector<int> * times = channel->times();
+	std::vector<long long int> * times = channel->times();
 	std::vector<double> * signals = channel->signals();
-	if (times->size() <= m_triggerWindowSizeTotal) return;
+	if (times->size() <= m_triggerWindowSizeTotal && m_triggerMethod == 0) return;
 
 	
 	bool firstTimeEval = true;
 	double triggerValue;
-	double triggerDipValue;
-	double triggerPeakValue;
-	double triggerBaseLine;
 	double cacheA = 0.0;
 	double cacheB = 0.0; 
 	double cacheC = 0.0;
+	double triggerDipValue, triggerPeakValue, triggerBaseLine;
 	bool triggered = false;
   unsigned int plotIndex = channel->glibID() * runner()->geometry()->nChannels() +
 		  channel->channelID();
 
-	for (unsigned int i=0; i<times->size() - m_triggerWindowSizeTotal; i++) {
-		// Temporary variables used to retrieve info from eval method. Also used 
-		// for caching.		
-		evalTimeWindow(signals, times, i, &triggerValue, &triggerDipValue, 
+	for (unsigned int i=0; i<times->size(); i++) {
+		if (m_triggerMethod == 0 && i > times->size() - m_triggerWindowSizeTotal) break;
+		if (m_triggerMethod == 0) evalTimeWindow(signals, times, i, &triggerValue, &triggerDipValue,
 				&triggerPeakValue, &triggerBaseLine, &firstTimeEval, &cacheA, &cacheB,
 				&cacheC);
-		
-	  if (event() == 0) h_triggerValues->at(plotIndex)->SetBinContent(i, triggerValue);
 		
 	  double tempTriggerValue;
 	  if (m_triggerMethod == 0) tempTriggerValue = triggerValue;
 	  else tempTriggerValue = signals->at(i) - channel->baseLineEst();
 		if (tempTriggerValue > m_triggerValueCuts[m_triggerMethod] && !triggered && channel->baseLineEst() > 5000) {
-			double time = times->at(i);
+			long long int time = times->at(i);
 
-			if (i+5<signals->size()) tempTriggerValue = (*std::max_element(signals->begin() + i, signals->begin() + i + 5)) - channel->baseLineEst();
+			double integral = 0.0;
+			if (i+5<signals->size() && i>1) {
+				std::vector<double>::iterator peakPos = std::max_element(signals->begin() + i, signals->begin() + i + 5);
+				integral += *peakPos;
+				integral += *(peakPos-1);
+				integral += *(peakPos+1);
+				integral -= 3*channel->baseLineEst();
+			}
 
 			m_mtx.lock();
 			runner()->triggerData()->times()->push_back(time);
 			runner()->triggerData()->channels()->push_back(channel);
 			runner()->triggerData()->values()->push_back(tempTriggerValue);
-			runner()->triggerData()->dipValues()->push_back(triggerDipValue);
-			runner()->triggerData()->peakValues()->push_back(triggerPeakValue);
-			runner()->triggerData()->baseLines()->push_back(triggerBaseLine);
+			runner()->triggerData()->integrals()->push_back(integral);
 			m_nTriggers++;
 			m_mtx.unlock();
 
@@ -230,10 +231,11 @@ void SafTrigger::scanChannel(SafRawDataChannel * channel)
 		}
 		else nSinceLastTrigger++;
 
-		if (m_event == 0) {
-			h_triggerOnOff->at(channel->plotIndex())->SetBinContent(i, int(triggered));
-			h_writingOnOff->at(channel->plotIndex())->SetBinContent(i, int(writing));
-		}
+//		if (m_event == 0) {
+//			h_triggerValues stuff
+//			h_triggerOnOff->at(channel->plotIndex())->SetBinContent(i, int(triggered));
+//			h_writingOnOff->at(channel->plotIndex())->SetBinContent(i, int(writing));
+//		}
 	}
 
 	m_mtx.lock();
@@ -248,7 +250,7 @@ void SafTrigger::scanChannel(SafRawDataChannel * channel)
 //_____________________________________________________________________________
 
 void SafTrigger::evalTimeWindow(std::vector<double> * signals,
-		std::vector<int> * times, unsigned int iStart, double * triggerValue, 
+		std::vector<long long int> * times, unsigned int iStart, double * triggerValue,
 		double * triggerDipValue, double * triggerPeakValue, double * triggerBaseLine,
 		bool * firstTimeEval, double * cacheA, double * cacheB, double * cacheC)
 {

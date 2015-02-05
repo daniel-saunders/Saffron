@@ -24,7 +24,7 @@ SafRunner::SafRunner() :
   m_fileNamesPassed(false)
 {
 	// Default file name (removed if arguments passed in).
-	m_rawDataFileNames.push_back("SM1_06Jan2015_1023_run0_scoperun_slowcontrol-small.root");
+	m_rawDataFileNames.push_back("/storage/SOLID/SM1_04Feb2015_1724_run3_triggered_thr200_coinc_testing.root");
 	// Default algorithm list.
 	m_algorithms.push_back(new SafEventBuilder(this));
 	m_algorithms.push_back(new SafRawPlots(this, false));
@@ -33,21 +33,29 @@ SafRunner::SafRunner() :
 	m_algorithms.push_back(new SafTrigger(this));
 	m_algorithms.push_back(new SafTriggerPlots(this));
 //	m_algorithms.push_back(new SafPeakFitter(this));
-	m_algorithms.push_back(new SafCoincidenceFinder(this));
+//	m_algorithms.push_back(new SafCoincidenceFinder(this));
 
 	// Geometry.
 	m_geometry = new SafGeometry();
 
 	// Options.
-	m_nEvents = 8000; // Total over all input files. EOF is safe.
-	m_runMode = 1; // 0 for MC, 1 for real data.
+	m_nEvents = 1000; // Total over all input files. EOF is safe.
+	m_runMode = 2; // 0 for MC, 1 for scope mode data, 2 for trigger.
 }
 
 
 //_____________________________________________________________________________
 
 void SafRunner::evalArg(std::string arg) {
-	if (arg.substr(0, 14) == "--rawDataFile=") {
+	if (arg.substr(0, 10) == "--runMode=") {
+		if (arg.substr(10, 12) == "MC") m_runMode = 0;
+		else if (arg.substr(10, 15) == "Scope") m_runMode = 1;
+		else if (arg.substr(10, 19) == "Triggered") m_runMode = 2;
+
+		std::cout<<"Run mode set to: "<<m_runMode<<std::endl;
+	}
+
+	else if (arg.substr(0, 14) == "--rawDataFile=") {
 		if (!m_fileNamesPassed) m_rawDataFileNames.clear();
 		m_fileNamesPassed = true;
 		std::string fileName = arg.substr(14, arg.size());
@@ -159,7 +167,7 @@ void SafRunner::eventLoop() {
 	for (unsigned int i=0; i<m_nEvents; i++) {
 		bool eof = false;
   	if (m_event % m_printRate == 0) {
-      if (runMode()==1) {
+      if (runMode()==1 || runMode() == 2) {
     		double frac = ((SafEventBuilder*)m_algorithms[0])->treePos()/(1.*((SafEventBuilder*)m_algorithms[0])->chain()->GetEntries());
     		std::cout<<"Event: "<<m_event<<"\tFrac read: "<<frac<<"\t"<<"(/"<<nEvents()<<" events or EOF) \t Current File:\t"<<((SafEventBuilder*)m_algorithms[0])->chain()->GetFile()->GetName()<<std::endl;
     	}

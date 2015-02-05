@@ -14,7 +14,7 @@ SafRawPlots::SafRawPlots(SafRunner * runner, bool filtered) :
   SafAlgorithm(runner, "SafRawPlots"),
   m_diffBinRange(6),
   m_nSeekedRoots(3),
-  m_calculateGains(true),
+  m_calculateGains(false),
   m_nFinalizeThreads(10),
   m_smoothing(true)
 {
@@ -36,15 +36,19 @@ SafRawPlots::~SafRawPlots()
 void SafRawPlots::initialize()
 {
 	m_threading = true;
-
+	m_firstEventFilled = new std::vector<bool>(runner()->nCnG(), false);
 	std::string direcName = name();
 	if (m_filtered) direcName += "-Filtered";
 
 	unsigned int nG = runner()->geometry()->nGlibs();
 	unsigned int nC = runner()->geometry()->nChannels();
 
+	double size;
+	if (runner()->runMode() == 1) size = runner()->eventTimeWindow();
+	else size = 300;
+
 	h_firstEventWaveforms = initPerChannelPlots("FirstEventWaveForm", "FirstEventWaveForm", 
-		runner()->eventTimeWindow(), 0.0, runner()->eventTimeWindow());
+		size, 0.0, size);
 
 	std::string name = "Signal";
 	if (m_filtered) name += "-Filtered";
@@ -82,33 +86,11 @@ void SafRawPlots::initialize()
 		instance_direc->mkdir(("Signals/Glib" + ssGlib.str()).c_str());
 	}
 
-	instance_direc->mkdir("SignalsDifferentiated");
-	for (unsigned int i=0; i<nG; i++) {
-		std::stringstream ssGlib; ssGlib<<i;
-		instance_direc->mkdir(("SignalsDifferentiated/Glib" + ssGlib.str()).c_str());
-	}
-
 	instance_direc->mkdir("SignalsDoubleDifferentiated");
 	for (unsigned int i=0; i<nG; i++) {
 		std::stringstream ssGlib; ssGlib<<i;
 		instance_direc->mkdir(("SignalsDoubleDifferentiated/Glib" + ssGlib.str()).c_str());
 	}
-
-	instance_direc->mkdir("SignalsTripleDifferentiated");
-	for (unsigned int i=0; i<nG; i++) {
-		std::stringstream ssGlib; ssGlib<<i;
-		instance_direc->mkdir(("SignalsTripleDifferentiated/Glib" + ssGlib.str()).c_str());
-	}
-
-
-	h_avSignalPerEventPerChannel = new TH2F("AvSignalPerEventPerChannel",
-		"AvSignalPerEventPerChannel", nC*nG, 0, nC*nG, runner()->nEvents(), 0, runner()->nEvents());
-  h_rmsSignalPerEventPerChannel = new TH2F("RMSSignalPerEventPerChannel",
-		"RMSSignalPerEventPerChannel", nC*nG, 0, nC*nG, runner()->nEvents(), 0, runner()->nEvents());
-
-  h_avSignalOfEvents = new TH1F("AvSignalPerEvent", "AvSignalPerEvent", 500, 0.998, 1.002);
-  h_avSignalPerChannelOfEvents = new TH2F("AvSignalPerEvent", "AvSignalPerEvent",
-  		nC*nG, 0., 1.*nC*nG, 500, 0.998, 1.002);
 
   std::string nameX = "Gains";
   if (m_filtered) nameX += "-Filtered";
@@ -155,36 +137,14 @@ void SafRawPlots::finalize()
 		runner()->saveFile()->cd((direcName + "/Signals/Glib" + ssGlib.str()).c_str());
 		h_signals->at(i)->Write();
 
-		int fitStatus = h_signals->at(i)->Fit("gaus", "Q");
-		if (fitStatus != 0) continue;
-		h_signalMeans->SetBinContent(i, h_signals->at(i)->GetFunction("gaus")->GetParameter(1));
-		h_signalMeans->SetBinError(i, h_signals->at(i)->GetFunction("gaus")->GetParError(1));
 
-		h_signalWidths->SetBinContent(i, h_signals->at(i)->GetFunction("gaus")->GetParameter(2));
-		h_signalWidths->SetBinError(i, h_signals->at(i)->GetFunction("gaus")->GetParError(2));
+		h_signalMeans->SetBinContent(i, h_signals->at(i)->GetMean());
+		h_signalWidths->SetBinContent(i, h_signals->at(i)->GetRMS());
 
-//		runner()->saveFile()->cd((direcName + "/SignalsDifferentiated/Glib" + ssGlib.str()).c_str());
-//		h_signalsDiff->at(i)->Write();
-//
 		runner()->saveFile()->cd((direcName + "/SignalsDoubleDifferentiated/Glib" + ssGlib.str()).c_str());
 		h_signalsDoubleDiff->at(i)->Write();
-//
-//		runner()->saveFile()->cd((direcName + "/SignalsTripleDifferentiated/Glib" + ssGlib.str()).c_str());
-//		h_signalsTripleDiff->at(i)->Write();
 	}
 
-//	for (int i=0; i<h_avSignalPerEventPerChannel->GetNbinsX(); i++) {
-//		for (int j=0; j<h_avSignalPerEventPerChannel->GetNbinsY(); j++) {
-//			double av = h_avSignalPerEventPerChannel->GetBinContent(i, j);
-//			double rms = h_rmsSignalPerEventPerChannel->GetBinContent(i, j);
-//			av /= h_signals->at(i)->GetMean();
-//			rms /= h_signals->at(i)->GetMean();
-//			h_avSignalPerEventPerChannel->SetBinContent(i, j, av);
-//			h_rmsSignalPerEventPerChannel->SetBinContent(i, j, rms);
-//			h_avSignalOfEvents->Fill(av);
-//			h_avSignalPerChannelOfEvents->Fill(i, av);
-//		}
-//	}
 
 	for (unsigned int i=0; i<runner()->geometry()->nChannels(); i++) {
 		for (unsigned int j=0; j<runner()->geometry()->nGlibs(); j++) {
@@ -199,10 +159,6 @@ void SafRawPlots::finalize()
 	proj->Write();
 	h_signalMeans->Write();
 	h_signalWidths->Write();
-	h_avSignalPerEventPerChannel->Write();
-	h_rmsSignalPerEventPerChannel->Write();
-	h_avSignalOfEvents->Write();
-	h_avSignalPerChannelOfEvents->Write();
 	h_gains->Write();
 	h_gainsPerChannel->Write();
 	h_nBaseLineEstVsChannel->Write();
@@ -343,31 +299,23 @@ void SafRawPlots::threadExecute(unsigned int iGlib, unsigned int iLow,
 {
 	unsigned int nChannels = runner()->geometry()->nChannels();
 	for (unsigned int i=iLow; i<iUp; i++) {
-		double sum = 0.0;
-		double sumSq = 0.0;
 		SafRawDataChannel * channel = runner()->rawData()->channel(iGlib, i);
 		unsigned int plotIndex = iGlib*nChannels + i;
 
-		for (unsigned int k=0; k<channel->nEntries(); k++) {
-			if (runner()->event() == 0) {
+		if (!m_firstEventFilled->at(plotIndex) && channel->signals()->size() > 0) {
+			for (int k=0; k<channel->signals()->size(); k++) {
 				h_firstEventWaveforms->at(plotIndex)->SetBinContent(
-						channel->times()->at(k), channel->signals()->at(k));
+						k, channel->signals()->at(k));
+				if (k > h_firstEventWaveforms->at(plotIndex)->GetNbinsX()) break;
 			}
-
-			double signal = channel->signals()->at(k);
-			h_signals->at(plotIndex)->Fill(signal);
-			sum += signal;
-			sumSq += signal*signal;
+			m_mtx.lock();
+			m_firstEventFilled->at(plotIndex) = true;
+			m_mtx.unlock();
 		}
-		double av = sum/(1.*channel->nEntries());
-		double rms = pow(sumSq/(1.*channel->nEntries()) - av*av, 0.5);
 
-
-		unsigned int iChannel = i+iGlib*nChannels;
-		m_mtx.lock();
-		h_avSignalPerEventPerChannel->SetBinContent(iChannel, m_event, av);
-		h_rmsSignalPerEventPerChannel->SetBinContent(iChannel, m_event, rms);
-		m_mtx.unlock();
+		for (unsigned int k=0; k<channel->signals()->size(); k++) {
+			h_signals->at(plotIndex)->Fill(channel->signals()->at(k));
+		}
 	}
 }
 

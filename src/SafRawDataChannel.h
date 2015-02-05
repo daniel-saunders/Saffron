@@ -27,8 +27,9 @@ private:
 	unsigned int m_nTriggers;
 	unsigned int m_glibID;
 	unsigned int m_channelID;
-	std::vector<int> m_times;
+	std::vector<long long int> m_times;
 	std::vector<double> m_signals;
+	std::vector<unsigned int> m_triggerIDs;
 	unsigned int m_nEntriesTotal;
 	unsigned int m_nTriggersTotal;
 	double m_baseLineEst;
@@ -72,8 +73,9 @@ public:
   }
 
 	unsigned int channelID() {return m_channelID;}
-	std::vector<int> * times() {return &m_times;}
+	std::vector<long long int> * times() {return &m_times;}
 	std::vector<double> * signals() {return &m_signals;}
+	std::vector<unsigned int> * triggerIDs() {return &m_triggerIDs;}
 	unsigned int plotIndex();
 	unsigned int nEntriesTotal() {return m_nEntriesTotal;}
 	unsigned int nTriggersTotal() {return m_nTriggersTotal;}

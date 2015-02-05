@@ -23,16 +23,18 @@ private:
 	TH1F * h_peakValues;
 	TH1F * h_values;
 	TH1F * h_valuesZoomed;
-	TH2F * h_dipVsPeakValues;
-	TH2F * h_dipVsValues;
-	TH2F * h_peakVsValues;
+	TH2F * h_integralsVsValues;
 	TH1F * h_nTriggers;
 	TH2F * h_valuesVsChannel;
 	TH1F * h_dataRates;
 	TH1F * h_triggerRate;
 	TH2F * h_nTriggersVsEvents;
-	TH1F * h_triggerIntegral;
-
+	TH1F * h_integrals;
+	TH2F * h_integralsVsChannel;
+	TH2F * h_integralsVsValues0to38;
+	TH2F * h_integralsVsValues38to76;
+	TH2F * h_integralsVsValuesOdd;
+	TH2F * h_integralsVsValuesEven;
 
 public:
   // Methods __________________________________________________________________
