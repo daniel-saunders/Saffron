@@ -30,6 +30,8 @@ private:
 	TH2F * h_integralsVsChannel;
 	double m_upperThreshold;
 	TH2F * h_integralsVsValues;
+	TH1F * h_triggerValuesAboveSize;
+	
 
 public:
   // Methods __________________________________________________________________

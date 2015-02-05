@@ -44,6 +44,7 @@ void SafCoincidenceFinder::initialize()
 			runner()->nCnG(), 0, runner()->nCnG(), 1000, 0, 3000);
 	h_integralsVsValues = new TH2F("integralsVsValues", "integralsVsValues", 1000, 0, 3000,
 			1000, 0, 1000);
+	h_triggerValuesAboveSize = new TH1F("triggerValuesAboveSize", "triggerValuesAboveSize",1000,0,10000);
 }
 
 
@@ -110,6 +111,13 @@ void SafCoincidenceFinder::threadExecute(unsigned int iGlib, unsigned int iChann
 			}
 			iTime += size;
 		}
+	  
+	  if (size > 10) {
+	  	for (unsigned int ic=0; ic<coinTriggers.size(); ic++) {
+	  		h_triggerValuesAboveSize->Fill(coinTriggers[ic]);
+	  	}
+    }
+    
 		coinChannels.clear();
 		coinTriggers.clear();
 		coinIntegrals.clear();
@@ -142,7 +150,8 @@ void SafCoincidenceFinder::finalize()
 	h_channelRate->Write();
 	h_valuesVsChannel->Write();
 	h_integralsVsValues->Write();
-	for (int i=0; i<h_channelRate->GetNbinsX(); i++)
+	h_triggerValuesAboveSize->Write();
+	for (unsigned int i=0; i<h_channelRate->GetNbinsX(); i++)
 		h_channelRate->SetBinContent(i, h_channelRate->GetBinContent(i)/runner()->realTimeElapsed());
 }
 

@@ -25,6 +25,7 @@ SafRunner::SafRunner() :
 {
 	// Default file name (removed if arguments passed in).
 	m_rawDataFileNames.push_back("/storage/SOLID/SM1_04Feb2015_1724_run3_triggered_thr200_coinc_testing.root");
+
 	// Default algorithm list.
 	m_algorithms.push_back(new SafEventBuilder(this));
 	m_algorithms.push_back(new SafRawPlots(this, false));
@@ -152,7 +153,10 @@ void SafRunner::run()
 
   std::cout<<"\n"<<std::endl;
 	double scopeEquivRead = m_nEvents*2048*geometry()->nGlibs()*geometry()->nChannels()*8/1000000.;
-	std::cout<<"\nReal time scanned (scope mode + skips): \t"<<2048*m_nEvents*16/1000000.<<" (ms)"<<std::endl;
+	if (m_runMode == 1)
+		std::cout<<"\nReal time scanned (scope mode + skips): \t"<<2048*m_nEvents*16/1000000.<<" (ms)"<<std::endl;
+	else if (m_runMode == 2)
+		std::cout<<"\nReal time scanned (scope mode + skips): \t"<<((SafEventBuilder*)m_algorithms[0])->m_triggerEventWindow*nEvents()*16/1000000.<<" (ms)"<<std::endl;
 	if (runMode()==1) std::cout<<"Fraction tree read: \t\t\t\t"<<((SafEventBuilder*)m_algorithms[0])->treePos()/(1.*((SafEventBuilder*)m_algorithms[0])->chain()->GetEntries())<<std::endl;
 	std::cout<<"Total algorithm average (per event): \t\t"<<totAvTime<<" (ms)"<<std::endl;
 	std::cout<<"Total execution time (per event): \t\t"<<totExTime/(1000.*m_nEvents)<<" (ms)"<<std::endl;

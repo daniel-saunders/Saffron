@@ -14,7 +14,7 @@ SafEventBuilder::SafEventBuilder(SafRunner * runner) :
   m_nFileThreads(1),
   m_currentFileID(0),
   m_chainPos(0),
-  m_triggerEventWindow(100000000) //16ns.
+  m_triggerEventWindow(50000000) //16ns.
 {
   m_mean = 8000;
   m_rms = 7;

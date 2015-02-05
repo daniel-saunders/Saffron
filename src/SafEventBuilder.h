@@ -41,7 +41,6 @@ private:
 	unsigned int m_nFileThreads; // Doesn't work, should == 1 always.
 	TH1F * m_allSignals;
 	unsigned int m_currentFileID;
-	unsigned int m_triggerEventWindow;
 	long long int m_triggerTime;
 	TH1F * h_nSamplesPerEvent;
 	TH2F * h_nSamplesPerEventPerChannel;
@@ -61,6 +60,7 @@ private:
 
 
 public:
+	unsigned int m_triggerEventWindow;
 	// Methods __________________________________________________________________
 	SafEventBuilder(SafRunner * runner);
 	virtual ~SafEventBuilder();
